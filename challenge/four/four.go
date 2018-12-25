@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/kdhageman/gocrypto/challenge"
-	"github.com/kdhageman/gocrypto/dictionary"
+	"github.com/kdhageman/gocrypto/crypto"
 	"os"
 )
 
@@ -26,7 +26,7 @@ func (c *ch) Solve() error {
 		if err != nil {
 			return err
 		}
-		_, score, pt := dictionary.FindKey(ct)
+		_, score, pt := crypto.FindKey(ct)
 		if score > maxScore {
 			maxScore = score
 			resPt = string(pt)
