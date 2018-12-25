@@ -19,9 +19,9 @@ func (ch) Solve() error {
 		return err
 	}
 
-	_, _, pt := dictionary.FindKey(decoded)
+	_, chi, pt := dictionary.FindKey(decoded)
 
-	fmt.Printf("Resulting string: %s", string(pt))
+	fmt.Printf("Resulting string: %s (%f)", string(pt), chi)
 	return nil
 }
 
