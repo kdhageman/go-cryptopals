@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/kdhageman/gocrypto/challenge/four"
+	"github.com/kdhageman/gocrypto/challenge/six"
 )
 
 func main() {
-	ch := four.New()
+	ch := six.New()
 	if err := ch.Solve(); err != nil {
 		fmt.Printf(err.Error())
 	}

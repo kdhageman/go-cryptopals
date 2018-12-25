@@ -1,15 +1,15 @@
 package four
 
 import (
-	"github.com/kdhageman/gocrypto/challenge"
-		"bufio"
-	"os"
-	"fmt"
+	"bufio"
 	"encoding/hex"
-	"github.com/kdhageman/gocrypto/dictionary"
+	"fmt"
+	"github.com/kdhageman/gocrypto/challenge"
+	"github.com/kdhageman/gocrypto/crypto"
+	"os"
 )
 
-type ch struct {}
+type ch struct{}
 
 func (c *ch) Solve() error {
 	f, err := os.Open("challenge/four/input.txt")
@@ -26,7 +26,7 @@ func (c *ch) Solve() error {
 		if err != nil {
 			return err
 		}
-		_, score, pt := dictionary.FindKey(ct)
+		_, score, pt := crypto.FindKey(ct)
 		if score > maxScore {
 			maxScore = score
 			resPt = string(pt)
