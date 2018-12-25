@@ -1,8 +1,8 @@
 package crypto
 
 import (
+	"reflect"
 	"testing"
-		"reflect"
 )
 
 func TestHammingDistance(t *testing.T) {
@@ -20,24 +20,24 @@ func TestHammingDistance(t *testing.T) {
 
 func TestInBlocks(t *testing.T) {
 	tests := []struct {
-		name string
-		bs int
+		name         string
+		bs           int
 		expectedSize int
 	}{
 		{
-			name: "Block size of one",
-			bs: 1,
+			name:         "Block size of one",
+			bs:           1,
 			expectedSize: 8,
 		},
 		{
 			name: "" +
 				"Dividing block size",
-			bs: 2,
+			bs:           2,
 			expectedSize: 4,
 		},
 		{
-			name: "Non-dividing block size",
-			bs: 3,
+			name:         "Non-dividing block size",
+			bs:           3,
 			expectedSize: 3,
 		},
 	}
@@ -56,15 +56,15 @@ func TestInBlocks(t *testing.T) {
 
 func TestTranspose(t *testing.T) {
 	tests := []struct {
-		name string
-		input [][]byte
+		name     string
+		input    [][]byte
 		expected [][]byte
 	}{
 		{
 			name: "Normal",
 			input: [][]byte{
 				{0, 1, 2, 3},
-				{4, 5,6 ,7},
+				{4, 5, 6, 7},
 			},
 			expected: [][]byte{
 				{0, 4},
@@ -76,13 +76,16 @@ func TestTranspose(t *testing.T) {
 		{
 			name: "Unequal block sizes",
 			input: [][]byte{
-				{0, 1, 2},
-				{3, 4},
+				{0, 1, 2, 3, 4},
+				{10, 11, 12, 13, 14},
+				{20, 21, 22},
 			},
 			expected: [][]byte{
-				{0, 3},
-				{1, 4},
-				{2},
+				{0, 10, 20},
+				{1, 11, 21},
+				{2, 12, 22},
+				{3, 13},
+				{4, 14},
 			},
 		},
 	}

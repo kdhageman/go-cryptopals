@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kdhageman/gocrypto/challenge"
 	"github.com/kdhageman/gocrypto/crypto"
+	"github.com/logrusorgru/aurora"
 	"io/ioutil"
 )
 
@@ -17,13 +18,13 @@ func (c *ch) Solve() error {
 	}
 	base64.StdEncoding.Decode(ct, ct)
 
-	pt, _, err := crypto.BreakXor(ct)
+	pt, key, err := crypto.BreakXor(ct)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(string(pt))
-
+	fmt.Printf("Key: %v\n", aurora.Cyan(key))
+	fmt.Printf("Decrypted plain text:\n%s\n", aurora.Cyan(string(pt)))
 	return nil
 }
 

@@ -75,7 +75,7 @@ func Transpose(b [][]byte) [][]byte {
 	for r := 0; r < len(b[0]); r++ {
 		var col []byte
 		for _, c := range b {
-			if len(c) == r {
+			if len(c) <= r {
 				break
 			}
 			col = append(col, c[r])
@@ -85,46 +85,46 @@ func Transpose(b [][]byte) [][]byte {
 	return res
 }
 
-func breakXorKeysize(ct []byte) (int, error) {
+func ProbableXorKeysize(ct []byte) (int, error) {
 	numBlocks := len(ct) / 40
 
-	maxDist := 0.0
-	maxKs := -1
+	dist := math.MaxFloat64
+	keysize := -1
 
-	for ks := 2; ks < 40; ks++ {
+	for curKeysize := 2; curKeysize < 40; curKeysize++ {
 		var blocks [][]byte
 		for i := 0; i < numBlocks; i++ {
-			b := ct[i*ks : (i+1)*ks]
+			b := ct[i*curKeysize : (i+1)*curKeysize]
 			blocks = append(blocks, b)
 		}
 
-		distSum := 0
+		sum := 0
 		for i := 0; i < numBlocks-1; i++ {
 			hd, err := HammingDistance(blocks[i], blocks[i+1])
 			if err != nil {
 				return 0, err
 			}
-			distSum += hd
+			sum += hd
 		}
 
-		dist := float64(distSum) / float64(ks)
+		curDist := float64(sum) / float64(curKeysize)
 
-		if dist > maxDist {
-			maxDist = dist
-			maxKs = ks
+		if curDist < dist {
+			dist = curDist
+			keysize = curKeysize
 		}
 	}
 
-	return maxKs, nil
+	return keysize, nil
 }
 
 func BreakXor(ct []byte) (pt []byte, key []byte, err error) {
-	ks, err := breakXorKeysize(ct)
+	keysize, err := ProbableXorKeysize(ct)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	blocks := InBlocks(ct, ks)
+	blocks := InBlocks(ct, keysize)
 	blocks = Transpose(blocks)
 
 	for _, block := range blocks {
