@@ -1,15 +1,15 @@
 package four
 
 import (
-	"github.com/kdhageman/gocrypto/challenge"
-		"bufio"
-	"os"
-	"fmt"
+	"bufio"
 	"encoding/hex"
+	"fmt"
+	"github.com/kdhageman/gocrypto/challenge"
 	"github.com/kdhageman/gocrypto/dictionary"
+	"os"
 )
 
-type ch struct {}
+type ch struct{}
 
 func (c *ch) Solve() error {
 	f, err := os.Open("challenge/four/input.txt")

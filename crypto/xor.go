@@ -1,27 +1,40 @@
 package crypto
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 var (
 	InvalidLengthErr = errors.New("arrays have different lengths")
 )
 
-func Xor(a,b []byte) ([]byte, error) {
-	if len(a) != len(b) {
+func Xor(pt []byte, key []byte) ([]byte, error) {
+	if len(pt) != len(key) {
 		return nil, InvalidLengthErr
 	}
-	var res []byte
-	for i := range a {
-		res = append(res, a[i] ^ b[i])
+	var ct []byte
+	for i := range pt {
+		ct = append(ct, pt[i]^key[i])
 	}
 
-	return res, nil
+	return ct, nil
 }
 
-func XorSingle(a []byte, b byte) []byte {
+func XorSingle(pt []byte, key byte) []byte {
 	var res []byte
-	for i := range a {
-		res = append(res, a[i] ^ b)
+	for i := range pt {
+		res = append(res, pt[i]^key)
 	}
 	return res
+}
+
+func XorRepeat(pt []byte, key []byte) []byte {
+	var ct []byte
+	i := 0
+	for _, b := range pt {
+		k := key[i%len(key)]
+		ct = append(ct, b^k)
+		i++
+	}
+	return ct
 }
