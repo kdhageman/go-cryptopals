@@ -3,6 +3,14 @@ package crypto
 import (
 	"crypto/aes"
 	"fmt"
+	"math/rand"
+)
+
+type Mode int
+
+const (
+	ECB = Mode(0)
+	CBC = Mode(1)
 )
 
 type CiphertextSizeErr struct {
@@ -20,7 +28,7 @@ func EncryptEcb(pt []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// todo: padding
+	pt = PadPkcs7(pt, len(key))
 
 	var ct []byte
 	blocks := InBlocks(pt, len(key))
@@ -58,7 +66,7 @@ func EncryptCbc(pt []byte, key []byte, iv []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// todo: padding
+	pt = PadPkcs7(pt, len(key))
 
 	var ct []byte
 	blocks := InBlocks(pt, len(key))
@@ -95,4 +103,51 @@ func DecryptCbc(ct []byte, key []byte, iv []byte) ([]byte, error) {
 		iv = block
 	}
 	return pt, nil
+}
+
+func RandomKey(ksize int) []byte {
+	var key []byte
+	for i := 0; i < ksize; i++ {
+		b := byte(rand.Intn(256))
+		key = append(key, b)
+	}
+	return key
+}
+
+func EncryptRandomly(pt []byte, ksize int) ([]byte, Mode, error) {
+	prefix, suffix := RandomKey(5+rand.Intn(6)), RandomKey(5+rand.Intn(6))
+	pt = append(prefix, pt...)
+	pt = append(pt, suffix...)
+	pt = PadPkcs7(pt, ksize)
+
+	key := RandomKey(ksize)
+	mode := Mode(rand.Intn(2))
+	var encrypted []byte
+	var err error
+	switch mode {
+	case ECB:
+		encrypted, err = EncryptEcb(pt, key)
+		break
+	case CBC:
+		iv := RandomKey(ksize)
+		encrypted, err = EncryptCbc(pt, key, iv)
+		break
+	}
+	if err != nil {
+		return nil, mode, err
+	}
+	return encrypted, mode, nil
+}
+
+func DetectMode(ct []byte, bsize int) Mode {
+	dist := map[string]bool{}
+	blocks := InBlocks(ct, bsize)
+
+	for _, b := range blocks {
+		dist[string(b)] = true
+	}
+	if len(blocks)-len(dist) > 0 {
+		return ECB
+	}
+	return CBC
 }

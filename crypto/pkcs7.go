@@ -13,16 +13,22 @@ func (err DataSizeErr) Error() string {
 	return fmt.Sprintf("data block %d larger than block size %d", err.dsize, err.bsize)
 }
 
-func PadPkcs7(b []byte, bsize int) ([]byte, error) {
-	if len(b) > bsize {
-		return nil, DataSizeErr{len(b), bsize}
+func PadPkcs7(b []byte, bsize int) []byte {
+	if len(b)%bsize == 0 {
+		return b
 	}
-	if len(b) == bsize {
-		return b, nil
-	}
-	d := bsize - len(b)
+
+	blocks := InBlocks(b, bsize)
+	lastBlock := blocks[len(blocks)-1]
+	d := bsize - len(lastBlock)
 	for i := 0; i < d; i++ {
-		b = append(b, byte(d))
+		lastBlock = append(lastBlock, byte(d))
 	}
-	return b, nil
+	var res []byte
+	for i := 0; i < len(blocks)-1; i++ {
+		res = append(res, blocks[i]...)
+	}
+	res = append(res, lastBlock...)
+
+	return res
 }

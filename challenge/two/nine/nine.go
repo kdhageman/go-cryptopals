@@ -15,10 +15,7 @@ type ch struct{}
 
 func (c *ch) Solve() error {
 	unpadded := []byte(input)
-	padded, err := crypto.PadPkcs7(unpadded, 20)
-	if err != nil {
-		return err
-	}
+	padded := crypto.PadPkcs7(unpadded, 20)
 
 	fmt.Printf("First sixteen bytes: %s\n", aurora.Cyan(string(padded[:16])))
 	fmt.Printf("Last four bytes: %q\n", aurora.Cyan(padded[16:]))
