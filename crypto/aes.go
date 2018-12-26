@@ -21,6 +21,13 @@ func init() {
 
 type Mode int
 
+func (m Mode) String() string {
+	return map[int]string{
+		0: "ECB",
+		1: "CBC",
+	}[int(m)]
+}
+
 const (
 	ECB = Mode(0)
 	CBC = Mode(1)

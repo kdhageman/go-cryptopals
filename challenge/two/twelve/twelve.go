@@ -37,6 +37,15 @@ func (c *ch) Solve() error {
 	}
 	fmt.Printf("Found block size: %d\n", aurora.Cyan(bsize))
 
+	ct, err := crypto.EncryptionOracleConsistent([]byte{})
+	if err != nil {
+		return err
+	}
+	mode := crypto.DetectMode(ct, bsize)
+	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
+
+
+
 	return nil
 }
 
