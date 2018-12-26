@@ -12,7 +12,7 @@ import (
 type ch struct{}
 
 func (c *ch) Solve() error {
-	ct, err := ioutil.ReadFile("challenge/six/input.txt")
+	ct, err := ioutil.ReadFile("challenge/one/six/input.txt")
 	if err != nil {
 		return err
 	}
