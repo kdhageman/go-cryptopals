@@ -2,9 +2,22 @@ package crypto
 
 import (
 	"crypto/aes"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 )
+
+var (
+	GlobalKey []byte
+	Suffix    []byte
+	BlockSize = 16
+)
+
+func init() {
+	s := []byte("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK/IE5vLCBJIGp1c3QgZHJvdmUgYnkK")
+	Suffix = make([]byte, len(s))
+	base64.StdEncoding.Decode(Suffix, s)
+}
 
 type Mode int
 
@@ -114,7 +127,7 @@ func RandomKey(ksize int) []byte {
 	return key
 }
 
-func EncryptRandomly(pt []byte, ksize int) ([]byte, Mode, error) {
+func EncryptionOracle(pt []byte, ksize int) ([]byte, Mode, error) {
 	prefix, suffix := RandomKey(5+rand.Intn(6)), RandomKey(5+rand.Intn(6))
 	pt = append(prefix, pt...)
 	pt = append(pt, suffix...)
@@ -137,6 +150,18 @@ func EncryptRandomly(pt []byte, ksize int) ([]byte, Mode, error) {
 		return nil, mode, err
 	}
 	return encrypted, mode, nil
+}
+
+func EncryptionOracleConsistent(prefix []byte) ([]byte, error) {
+	if GlobalKey == nil {
+		GlobalKey = RandomKey(BlockSize)
+	}
+	pt := append(prefix, Suffix...)
+	ct, err := EncryptEcb(pt, GlobalKey)
+	if err != nil {
+		return nil, err
+	}
+	return ct, nil
 }
 
 func DetectMode(ct []byte, bsize int) Mode {

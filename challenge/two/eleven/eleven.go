@@ -22,7 +22,7 @@ func (c *ch) Solve() error {
 	}{}
 
 	for i := 0; i < 100; i++ {
-		ct, mode, err := crypto.EncryptRandomly([]byte(pt), 16)
+		ct, mode, err := crypto.EncryptionOracle([]byte(pt), 16)
 		if err != nil {
 			return err
 		}
