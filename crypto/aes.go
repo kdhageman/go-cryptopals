@@ -1,23 +1,17 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/aes"
-	"encoding/base64"
 	"fmt"
+	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
 	"math/rand"
 )
 
 var (
-	GlobalKey []byte
-	Suffix    []byte
-	BlockSize = 16
+	NoBlockSizeFoundErr = errors.New("failed to find block size")
 )
-
-func init() {
-	s := []byte("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK/IE5vLCBJIGp1c3QgZHJvdmUgYnkK")
-	Suffix = make([]byte, len(s))
-	base64.StdEncoding.Decode(Suffix, s)
-}
 
 type Mode int
 
@@ -159,18 +153,6 @@ func EncryptionOracle(pt []byte, ksize int) ([]byte, Mode, error) {
 	return encrypted, mode, nil
 }
 
-func EncryptionOracleConsistent(prefix []byte) ([]byte, error) {
-	if GlobalKey == nil {
-		GlobalKey = RandomKey(BlockSize)
-	}
-	pt := append(prefix, Suffix...)
-	ct, err := EncryptEcb(pt, GlobalKey)
-	if err != nil {
-		return nil, err
-	}
-	return ct, nil
-}
-
 func DetectMode(ct []byte, bsize int) Mode {
 	dist := map[string]bool{}
 	blocks := InBlocks(ct, bsize)
@@ -182,4 +164,42 @@ func DetectMode(ct []byte, bsize int) Mode {
 		return ECB
 	}
 	return CBC
+}
+
+func DetectBlocksize(f func(prefix []byte) (ct []byte, err error)) (int, error) {
+	prefix := []byte{0x41}
+	bsize := 0
+	var prev []byte
+	for i := 1; i < 40; i++ {
+		ct, err := f(prefix)
+		if err != nil {
+			return 0, err
+		}
+		if prev != nil && bytes.Equal(prev[:i-1], ct[:i-1]) {
+			bsize = i - 1
+			break
+		}
+		prev = ct
+		prefix = append(prefix, 0x41)
+	}
+	if bsize == 0 {
+		return 0, NoBlockSizeFoundErr
+	}
+	return bsize, nil
+}
+
+func PaddingOracleAttack(f func(prefix []byte) (ct []byte, err error)) ([]byte, error) {
+	bsize, err := DetectBlocksize(f)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Found block size: %d\n", aurora.Cyan(bsize))
+	ct, err := f([]byte{})
+	if err != nil {
+		return nil, err
+	}
+	mode := DetectMode(ct, bsize)
+	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
+
+	return nil, nil
 }
