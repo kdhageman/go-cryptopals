@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+	"math"
 	"math/rand"
 )
 
 var (
 	NoBlockSizeFoundErr = errors.New("failed to find block size")
+	NoByteFoundErr      = errors.New("failed to detect a plaintext byte")
 )
 
 type Mode int
@@ -166,12 +168,12 @@ func DetectMode(ct []byte, bsize int) Mode {
 	return CBC
 }
 
-func DetectBlocksize(f func(prefix []byte) (ct []byte, err error)) (int, error) {
+func DetectBlocksize(oracle func(prefix []byte) (ct []byte, err error)) (int, error) {
 	prefix := []byte{0x41}
 	bsize := 0
 	var prev []byte
 	for i := 1; i < 40; i++ {
-		ct, err := f(prefix)
+		ct, err := oracle(prefix)
 		if err != nil {
 			return 0, err
 		}
@@ -188,18 +190,54 @@ func DetectBlocksize(f func(prefix []byte) (ct []byte, err error)) (int, error) 
 	return bsize, nil
 }
 
-func PaddingOracleAttack(f func(prefix []byte) (ct []byte, err error)) ([]byte, error) {
-	bsize, err := DetectBlocksize(f)
+func prefix(l int) []byte {
+	var res []byte
+	for i := 0; i < l; i++ {
+		res = append(res, 0x41)
+	}
+	return res
+}
+
+func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]byte, error) {
+	bsize, err := DetectBlocksize(oracle)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("Found block size: %d\n", aurora.Cyan(bsize))
-	ct, err := f([]byte{})
+	ct, err := oracle([]byte{})
 	if err != nil {
 		return nil, err
 	}
 	mode := DetectMode(ct, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	return nil, nil
+	var pt []byte
+
+	for j := 15; j >= 0; j-- {
+		p := append(prefix(j))
+		prefixCt, err := oracle(p)
+		p = append(p, pt...)
+		if err != nil {
+			return nil, err
+		}
+
+		foundByte := false
+		for i := 0; i <= math.MaxUint8; i++ {
+			curPrefix := append(p, byte(i))
+			curCt, err := oracle(curPrefix)
+			if err != nil {
+				return nil, err
+			}
+			if bytes.Equal(curCt[:bsize], prefixCt[:bsize]) {
+				pt = append(pt, byte(i))
+				foundByte = true
+				break
+			}
+		}
+		if !foundByte {
+			return nil, NoByteFoundErr
+		}
+	}
+
+	return pt, nil
 }

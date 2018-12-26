@@ -11,7 +11,7 @@ import (
 
 type ch struct{}
 
-func encryptionFunction() (func([]byte) ([]byte, error), error) {
+func oracle() (func([]byte) ([]byte, error), error) {
 	key := crypto.RandomKey(16)
 	suffix, err := ioutil.ReadFile("challenge/two/twelve/suffix.txt")
 	if err != nil {
@@ -32,13 +32,15 @@ func encryptionFunction() (func([]byte) ([]byte, error), error) {
 }
 
 func (c *ch) Solve() error {
-	f, err := encryptionFunction()
+	f, err := oracle()
 	if err != nil {
 		return err
 	}
 	pt, err := crypto.PaddingOracleAttack(f)
-
-	fmt.Printf("Found plain text:\n%s\n", aurora.Cyan(pt))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Found plain text:\n%q\n", aurora.Cyan(pt))
 
 	return nil
 }
