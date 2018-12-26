@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/kdhageman/gocrypto/challenge/six"
+	"github.com/kdhageman/gocrypto/challenge/seven"
+	"github.com/logrusorgru/aurora"
 )
 
 func main() {
-	ch := six.New()
+	ch := seven.New()
 	if err := ch.Solve(); err != nil {
-		fmt.Printf(err.Error())
+		fmt.Printf("Failed to solve challenge: %s", aurora.Red(err.Error()))
 	}
 }
