@@ -214,23 +214,25 @@ func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]b
 	pt := repeatedByte(0xff, bsize - 1)
 
 	block := 0 // todo: iterate over all blocks
-	i := 15 // todo: iterate over all bytes in block
-	padding := repeatedByte(0xff, i)
 
-	targetCt, err := oracle(padding)
-	if err != nil {
-		return nil, err
-	}
+	for i := bsize -1; i >= 0; i-- {
+		padding := repeatedByte(0xff, i)
 
-	for candidate := 0; candidate <= math.MaxUint8; candidate++ {
-		candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate))
-		candidateCt, err := oracle(candidatePt)
+		targetCt, err := oracle(padding)
 		if err != nil {
 			return nil, err
 		}
-		if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
-			pt = append(pt, byte(candidate))
-			break
+
+		for candidate := 0; candidate <= math.MaxUint8; candidate++ {
+			candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate))
+			candidateCt, err := oracle(candidatePt)
+			if err != nil {
+				return nil, err
+			}
+			if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
+				pt = append(pt, byte(candidate))
+				break
+			}
 		}
 	}
 
