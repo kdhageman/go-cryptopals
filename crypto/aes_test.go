@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"github.com/logrusorgru/aurora"
+	"math/rand"
 	"testing"
 )
 
@@ -52,4 +53,24 @@ func TestPaddingOracleAttack(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEcb(t *testing.T) {
+	var pt []byte
+	for _, b := range rand.Perm(2048) {
+		pt = append(pt, byte(b))
+	}
+	key := RandomKey(16)
+	ct, err := DecryptEcb(pt, key)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	newPt, err := EncryptEcb(ct, key)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if !bytes.Equal(pt, newPt) {
+		t.Fatalf("Expected new plain text %q to equal old plain text %q", aurora.Cyan(newPt), aurora.Cyan(pt))
+	}
+
 }

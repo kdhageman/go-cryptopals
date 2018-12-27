@@ -133,7 +133,7 @@ func RandomKey(ksize int) []byte {
 }
 
 func DetectMode(oracle Oracle, bsize int) (Mode, error) {
-	pt := repeatedByte(0xff, bsize*3)
+	pt := RepeatedBytes(0xff, bsize*3)
 	ct, err := oracle(pt)
 	if err != nil {
 		return 0, err
@@ -170,7 +170,7 @@ func DetectBlocksize(oracle Oracle) (int, error) {
 	return bsize, nil
 }
 
-func repeatedByte(b byte, l int) []byte {
+func RepeatedBytes(b byte, l int) []byte {
 	var res []byte
 	for i := 0; i < l; i++ {
 		res = append(res, b)
@@ -187,13 +187,13 @@ func PaddingOracleAttack(oracle Oracle) ([]byte, error) {
 	mode, err := DetectMode(oracle, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	pt := repeatedByte(0xff, bsize-1)
+	pt := RepeatedBytes(0xff, bsize-1)
 
 	block := 0
 Outer:
 	for {
 		for i := bsize - 1; i >= 0; i-- {
-			padding := repeatedByte(0xff, i)
+			padding := RepeatedBytes(0xff, i)
 
 			targetCt, err := oracle(padding)
 			if err != nil {
