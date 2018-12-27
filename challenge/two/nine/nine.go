@@ -2,8 +2,8 @@ package nine
 
 import (
 	"fmt"
-	"github.com/kdhageman/gocrypto/challenge"
-	"github.com/kdhageman/gocrypto/crypto"
+	"github.com/kdhageman/go-cryptopals/challenge"
+	"github.com/kdhageman/go-cryptopals/crypto"
 	"github.com/logrusorgru/aurora"
 )
 

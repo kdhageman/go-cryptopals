@@ -3,8 +3,8 @@ package five
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/kdhageman/gocrypto/challenge"
-	"github.com/kdhageman/gocrypto/crypto"
+	"github.com/kdhageman/go-cryptopals/challenge"
+	"github.com/kdhageman/go-cryptopals/crypto"
 )
 
 var (

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/kdhageman/gocrypto/challenge"
+	"github.com/kdhageman/go-cryptopals/challenge"
 )
 
 var (

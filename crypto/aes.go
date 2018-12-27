@@ -213,10 +213,10 @@ func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]b
 
 	var pt []byte
 
-	for j := 15; j >= 0; j-- {
+	for j := bsize - 1; j >= 0; j-- {
 		p := append(prefix(j))
 		prefixCt, err := oracle(p)
-		p = append(p, pt...)
+		p = append(p, pt...) // todo: replace by something else!
 		if err != nil {
 			return nil, err
 		}

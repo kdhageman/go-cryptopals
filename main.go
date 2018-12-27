@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/kdhageman/gocrypto/challenge/two/twelve"
+	"github.com/kdhageman/go-cryptopals/challenge/two/twelve"
 	"github.com/logrusorgru/aurora"
 )
 
