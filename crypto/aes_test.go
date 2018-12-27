@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	secret = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	secret = []byte("abcdefghijklmnop")
 )
 
 func oracle() func([]byte) ([]byte, error) {

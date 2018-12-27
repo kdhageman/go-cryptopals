@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
+		"math/rand"
 	"math"
-	"math/rand"
 )
 
 var (
@@ -190,10 +190,10 @@ func DetectBlocksize(oracle func(prefix []byte) (ct []byte, err error)) (int, er
 	return bsize, nil
 }
 
-func prefix(l int) []byte {
+func repeatedByte(b byte, l int) []byte {
 	var res []byte
 	for i := 0; i < l; i++ {
-		res = append(res, 0x41)
+		res = append(res, b)
 	}
 	return res
 }
@@ -211,33 +211,28 @@ func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]b
 	mode := DetectMode(ct, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	var pt []byte
+	pt := repeatedByte(0xff, bsize - 1)
 
-	for j := bsize - 1; j >= 0; j-- {
-		p := append(prefix(j))
-		prefixCt, err := oracle(p)
-		p = append(p, pt...) // todo: replace by something else!
+	block := 0 // todo: iterate over all blocks
+	i := 15 // todo: iterate over all bytes in block
+	padding := repeatedByte(0xff, i)
+
+	targetCt, err := oracle(padding)
+	if err != nil {
+		return nil, err
+	}
+
+	for candidate := 0; candidate <= math.MaxUint8; candidate++ {
+		candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate))
+		candidateCt, err := oracle(candidatePt)
 		if err != nil {
 			return nil, err
 		}
-
-		foundByte := false
-		for i := 0; i <= math.MaxUint8; i++ {
-			curPrefix := append(p, byte(i))
-			curCt, err := oracle(curPrefix)
-			if err != nil {
-				return nil, err
-			}
-			if bytes.Equal(curCt[:bsize], prefixCt[:bsize]) {
-				pt = append(pt, byte(i))
-				foundByte = true
-				break
-			}
-		}
-		if !foundByte {
-			return nil, NoByteFoundErr
+		if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
+			pt = append(pt, byte(candidate))
+			break
 		}
 	}
 
-	return pt, nil
+	return pt[bsize-1:], nil
 }
