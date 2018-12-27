@@ -15,6 +15,8 @@ var (
 	NoByteFoundErr      = errors.New("failed to detect a plaintext byte")
 )
 
+type Oracle func([]byte) ([]byte, error)
+
 type Mode int
 
 func (m Mode) String() string {
@@ -130,45 +132,23 @@ func RandomKey(ksize int) []byte {
 	return key
 }
 
-func EncryptionOracle(pt []byte, ksize int) ([]byte, Mode, error) {
-	prefix, suffix := RandomKey(5+rand.Intn(6)), RandomKey(5+rand.Intn(6))
-	pt = append(prefix, pt...)
-	pt = append(pt, suffix...)
-	pt = PadPkcs7(pt, ksize)
-
-	key := RandomKey(ksize)
-	mode := Mode(rand.Intn(2))
-	var encrypted []byte
-	var err error
-	switch mode {
-	case ECB:
-		encrypted, err = EncryptEcb(pt, key)
-		break
-	case CBC:
-		iv := RandomKey(ksize)
-		encrypted, err = EncryptCbc(pt, key, iv)
-		break
-	}
+func DetectMode(oracle Oracle, bsize int) (Mode, error) {
+	pt := repeatedByte(0xff, bsize*3)
+	ct, err := oracle(pt)
 	if err != nil {
-		return nil, mode, err
+		return 0, err
 	}
-	return encrypted, mode, nil
+	second := ct[bsize : 2*bsize]
+	third := ct[2*bsize : 3*bsize]
+
+	if bytes.Equal(second, third) {
+		return ECB, nil
+	}
+
+	return CBC, nil
 }
 
-func DetectMode(ct []byte, bsize int) Mode {
-	dist := map[string]bool{}
-	blocks := InBlocks(ct, bsize)
-
-	for _, b := range blocks {
-		dist[string(b)] = true
-	}
-	if len(blocks)-len(dist) > 0 {
-		return ECB
-	}
-	return CBC
-}
-
-func DetectBlocksize(oracle func(prefix []byte) (ct []byte, err error)) (int, error) {
+func DetectBlocksize(oracle Oracle) (int, error) {
 	prefix := []byte{0x41}
 	bsize := 0
 	var prev []byte
@@ -198,17 +178,13 @@ func repeatedByte(b byte, l int) []byte {
 	return res
 }
 
-func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]byte, error) {
+func PaddingOracleAttack(oracle Oracle) ([]byte, error) {
 	bsize, err := DetectBlocksize(oracle)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("Found block size: %d\n", aurora.Cyan(bsize))
-	ct, err := oracle([]byte{})
-	if err != nil {
-		return nil, err
-	}
-	mode := DetectMode(ct, bsize)
+	mode, err := DetectMode(oracle, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
 	pt := repeatedByte(0xff, bsize-1)

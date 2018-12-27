@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-func oracle(secret []byte) func([]byte) ([]byte, error) {
+func oracle(secret []byte) Oracle {
 	key := RandomKey(16)
 
-	f := func(prefix []byte) ([]byte, error) {
-		pt := append(prefix, secret...)
+	f := func(pt []byte) ([]byte, error) {
+		pt = append(pt, secret...)
 		ct, err := EncryptEcb(pt, key)
 		if err != nil {
 			return nil, err

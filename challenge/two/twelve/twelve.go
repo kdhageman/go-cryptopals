@@ -11,7 +11,7 @@ import (
 
 type ch struct{}
 
-func oracle() (func([]byte) ([]byte, error), error) {
+func oracle() (crypto.Oracle, error) {
 	key := crypto.RandomKey(16)
 	suffix, err := ioutil.ReadFile("challenge/two/twelve/suffix.txt")
 	if err != nil {
@@ -19,8 +19,8 @@ func oracle() (func([]byte) ([]byte, error), error) {
 	}
 	base64.StdEncoding.Decode(suffix, suffix)
 
-	f := func(prefix []byte) ([]byte, error) {
-		pt := append(prefix, suffix...)
+	f := func(pt []byte) ([]byte, error) {
+		pt = append(pt, suffix...)
 		ct, err := crypto.EncryptEcb(pt, key)
 		if err != nil {
 			return nil, err
