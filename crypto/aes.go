@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
-		"math/rand"
 	"math"
+	"math/rand"
 )
 
 var (
@@ -211,30 +211,41 @@ func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]b
 	mode := DetectMode(ct, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	pt := repeatedByte(0xff, bsize - 1)
+	pt := repeatedByte(0xff, bsize-1)
 
-	block := 0 // todo: iterate over all blocks
+	block := 0
+Outer:
+	for {
+		for i := bsize - 1; i >= 0; i-- {
+			padding := repeatedByte(0xff, i)
 
-	for i := bsize -1; i >= 0; i-- {
-		padding := repeatedByte(0xff, i)
-
-		targetCt, err := oracle(padding)
-		if err != nil {
-			return nil, err
-		}
-
-		for candidate := 0; candidate <= math.MaxUint8; candidate++ {
-			candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate))
-			candidateCt, err := oracle(candidatePt)
+			targetCt, err := oracle(padding)
 			if err != nil {
 				return nil, err
 			}
-			if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
-				pt = append(pt, byte(candidate))
-				break
+
+			found := false
+			for candidate := 0; candidate <= math.MaxUint8; candidate++ {
+				candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate)) // use last 'bsize-1' discovered plain text bytes + the candidate byte for creating the candidate plain text
+				candidateCt, err := oracle(candidatePt)
+				if err != nil {
+					return nil, err
+				}
+				if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
+					pt = append(pt, byte(candidate))
+					found = true
+					break
+				}
+			}
+			if !found {
+				// the algorithm has not found a candidate, because of the PKCS7 padding (last two bytes are 0x02, whereas the padding was a 0x01 in the last iteration)
+				break Outer
 			}
 		}
+		block++
 	}
 
-	return pt[bsize-1:], nil
+	// first bsize-1 padding bits not returned
+	// last byte is a 0x01 padding byte and therefore should not be returned
+	return pt[bsize-1 : len(pt)-1], nil
 }

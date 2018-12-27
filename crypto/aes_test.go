@@ -6,11 +6,7 @@ import (
 	"testing"
 )
 
-var (
-	secret = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-)
-
-func oracle() func([]byte) ([]byte, error) {
+func oracle(secret []byte) func([]byte) ([]byte, error) {
 	key := RandomKey(16)
 
 	f := func(prefix []byte) ([]byte, error) {
@@ -26,13 +22,34 @@ func oracle() func([]byte) ([]byte, error) {
 }
 
 func TestPaddingOracleAttack(t *testing.T) {
-	f := oracle()
-	pt, err := PaddingOracleAttack(f)
-	if err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
-	if !bytes.Equal(pt, secret) {
-		t.Fatalf("Expected %s, but got %s", aurora.Cyan(secret), aurora.Cyan(pt))
+	tests := []struct {
+		name   string
+		secret []byte
+	}{
+		{
+			name:   "Non-dividing block size",
+			secret: []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+		},
+		{
+			name:   "Dividing block size",
+			secret: []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV"),
+		},
+		{
+			name:   "Incomplete block",
+			secret: []byte("abc"),
+		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := oracle(tt.secret)
+			pt, err := PaddingOracleAttack(f)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if !bytes.Equal(pt, tt.secret) {
+				t.Fatalf("Expected %s, but got %s", aurora.Cyan(tt.secret), aurora.Cyan(pt))
+			}
+		})
+	}
 }

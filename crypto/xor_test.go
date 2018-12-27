@@ -40,6 +40,11 @@ func TestInBlocks(t *testing.T) {
 			bs:           3,
 			expectedSize: 3,
 		},
+		{
+			name:         "Block size large than input",
+			bs:           20,
+			expectedSize: 1,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
