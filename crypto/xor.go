@@ -58,7 +58,11 @@ func HammingDistance(a, b []byte) (int, error) {
 
 func InBlocks(b []byte, bs int) [][]byte {
 	var res [][]byte
-	blockc := int(math.Round(float64(len(b)) / float64(bs)))
+
+	blockc := len(b) / bs
+	if len(b)%bs != 0 {
+		blockc++
+	}
 	for i := 0; i < blockc; i++ {
 		start := i * bs
 		end := (i + 1) * bs

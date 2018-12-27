@@ -190,10 +190,10 @@ func DetectBlocksize(oracle func(prefix []byte) (ct []byte, err error)) (int, er
 	return bsize, nil
 }
 
-func prefix(l int) []byte {
+func repeatedByte(b byte, l int) []byte {
 	var res []byte
 	for i := 0; i < l; i++ {
-		res = append(res, 0x41)
+		res = append(res, b)
 	}
 	return res
 }
@@ -211,33 +211,41 @@ func PaddingOracleAttack(oracle func(prefix []byte) (ct []byte, err error)) ([]b
 	mode := DetectMode(ct, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	var pt []byte
+	pt := repeatedByte(0xff, bsize-1)
 
-	for j := 15; j >= 0; j-- {
-		p := append(prefix(j))
-		prefixCt, err := oracle(p)
-		p = append(p, pt...)
-		if err != nil {
-			return nil, err
-		}
+	block := 0
+Outer:
+	for {
+		for i := bsize - 1; i >= 0; i-- {
+			padding := repeatedByte(0xff, i)
 
-		foundByte := false
-		for i := 0; i <= math.MaxUint8; i++ {
-			curPrefix := append(p, byte(i))
-			curCt, err := oracle(curPrefix)
+			targetCt, err := oracle(padding)
 			if err != nil {
 				return nil, err
 			}
-			if bytes.Equal(curCt[:bsize], prefixCt[:bsize]) {
-				pt = append(pt, byte(i))
-				foundByte = true
-				break
+
+			found := false
+			for candidate := 0; candidate <= math.MaxUint8; candidate++ {
+				candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate)) // use last 'bsize-1' discovered plain text bytes + the candidate byte for creating the candidate plain text
+				candidateCt, err := oracle(candidatePt)
+				if err != nil {
+					return nil, err
+				}
+				if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
+					pt = append(pt, byte(candidate))
+					found = true
+					break
+				}
+			}
+			if !found {
+				// the algorithm has not found a candidate, because of the PKCS7 padding (last two bytes are 0x02, whereas the padding was a 0x01 in the last iteration)
+				break Outer
 			}
 		}
-		if !foundByte {
-			return nil, NoByteFoundErr
-		}
+		block++
 	}
 
-	return pt, nil
+	// first bsize-1 padding bits not returned
+	// last byte is a 0x01 padding byte and therefore should not be returned
+	return pt[bsize-1 : len(pt)-1], nil
 }

@@ -1,7 +1,7 @@
 package crypto_test
 
 import (
-	"github.com/kdhageman/gocrypto/crypto"
+	"github.com/kdhageman/go-cryptopals/crypto"
 	"math"
 	"testing"
 )

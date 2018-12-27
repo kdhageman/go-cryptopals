@@ -3,8 +3,8 @@ package three
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/kdhageman/gocrypto/challenge"
-	"github.com/kdhageman/gocrypto/dictionary"
+	"github.com/kdhageman/go-cryptopals/challenge"
+	"github.com/kdhageman/go-cryptopals/dictionary"
 )
 
 var (
