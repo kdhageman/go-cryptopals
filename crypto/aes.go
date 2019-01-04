@@ -46,10 +46,10 @@ func EncryptEcb(pt []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	pt = PadPkcs7(pt, len(key))
+	pt = PadPkcs7(pt, aes.BlockSize)
 
 	var ct []byte
-	blocks := InBlocks(pt, len(key))
+	blocks := InBlocks(pt, aes.BlockSize)
 	for _, block := range blocks {
 		encrypted := make([]byte, len(block))
 		c.Encrypt(encrypted, block)
@@ -133,7 +133,7 @@ func RandomKey(ksize int) []byte {
 }
 
 func DetectMode(oracle Oracle, bsize int) (Mode, error) {
-	pt := RepeatedBytes(0xff, bsize*3)
+	pt := bytes.Repeat([]byte{0xff}, bsize*3)
 	ct, err := oracle(pt)
 	if err != nil {
 		return 0, err
@@ -149,33 +149,37 @@ func DetectMode(oracle Oracle, bsize int) (Mode, error) {
 }
 
 func DetectBlocksize(oracle Oracle) (int, error) {
-	prefix := []byte{0x41}
-	bsize := 0
-	var prev []byte
-	for i := 1; i < 40; i++ {
+	var prev, prefix []byte
+	for i := 1; i < 256; i++ {
+		prefix = append(prefix, 0xff)
 		ct, err := oracle(prefix)
 		if err != nil {
 			return 0, err
 		}
-		if prev != nil && bytes.Equal(prev[:i-1], ct[:i-1]) {
-			bsize = i - 1
-			break
+		if prev != nil && len(prev) != len(ct) {
+			return len(ct) - len(prev), nil
 		}
 		prev = ct
-		prefix = append(prefix, 0x41)
 	}
-	if bsize == 0 {
-		return 0, NoBlockSizeFoundErr
-	}
-	return bsize, nil
+	return 0, NoBlockSizeFoundErr
 }
 
-func RepeatedBytes(b byte, l int) []byte {
-	var res []byte
-	for i := 0; i < l; i++ {
-		res = append(res, b)
+// Under the assumption that the prefix is smaller than the block size
+func DetectPrefixSize(oracle Oracle, bsize int) (int, error) {
+	var padding []byte
+	var prev []byte
+	for i := 0; i < bsize; i++ {
+		ct, err := oracle(padding)
+		if err != nil {
+			return 0, err
+		}
+		if prev != nil && bytes.Equal(prev[:bsize], ct[:bsize]) {
+			return bsize - i + 1, nil
+		}
+		prev = ct
+		padding = append(padding, 0xff)
 	}
-	return res
+	return 0, nil
 }
 
 func PaddingOracleAttack(oracle Oracle) ([]byte, error) {
@@ -184,30 +188,37 @@ func PaddingOracleAttack(oracle Oracle) ([]byte, error) {
 		return nil, err
 	}
 	fmt.Printf("Found block size: %d\n", aurora.Cyan(bsize))
+	psize, err := DetectPrefixSize(oracle, bsize)
+	fmt.Printf("Found prefix size: %d\n", aurora.Cyan(psize))
 	mode, err := DetectMode(oracle, bsize)
 	fmt.Printf("Found encryption mode: %s\n", aurora.Cyan(mode))
 
-	pt := RepeatedBytes(0xff, bsize-1)
+	pt := bytes.Repeat([]byte{0xff}, bsize-1)
 
 	block := 0
 Outer:
 	for {
 		for i := bsize - 1; i >= 0; i-- {
-			padding := RepeatedBytes(0xff, i)
+			padding := bytes.Repeat([]byte{0xff}, bsize-psize+i)
 
 			targetCt, err := oracle(padding)
 			if err != nil {
 				return nil, err
 			}
+			targetCt = targetCt[(block+1)*bsize : (block+2)*bsize]
 
 			found := false
 			for candidate := 0; candidate <= math.MaxUint8; candidate++ {
-				candidatePt := append(pt[len(pt)-bsize+1:], byte(candidate)) // use last 'bsize-1' discovered plain text bytes + the candidate byte for creating the candidate plain text
+				candidatePt := bytes.Repeat([]byte{0xff}, bsize-psize)
+				candidatePt = append(candidatePt, pt[len(pt)-bsize+1:]...) // use last 'bsize-1' discovered plain text bytes + the candidate byte for creating the candidate plain text
+				candidatePt = append(candidatePt, byte(candidate))
 				candidateCt, err := oracle(candidatePt)
 				if err != nil {
 					return nil, err
 				}
-				if bytes.Equal(candidateCt[:bsize], targetCt[block*bsize:(block+1)*bsize]) {
+				candidateCt = candidateCt[bsize : 2*bsize]
+
+				if bytes.Equal(candidateCt, targetCt) {
 					pt = append(pt, byte(candidate))
 					found = true
 					break
