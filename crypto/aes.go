@@ -149,25 +149,19 @@ func DetectMode(oracle Oracle, bsize int) (Mode, error) {
 }
 
 func DetectBlocksize(oracle Oracle) (int, error) {
-	prefix := []byte{0x41}
-	bsize := 0
-	var prev []byte
-	for i := 1; i < 40; i++ {
+	var prev, prefix []byte
+	for i := 1; i < 256; i++ {
+		prefix = append(prefix, 0xff)
 		ct, err := oracle(prefix)
 		if err != nil {
 			return 0, err
 		}
-		if prev != nil && bytes.Equal(prev[:i-1], ct[:i-1]) {
-			bsize = i - 1
-			break
+		if prev != nil && len(prev) != len(ct) {
+			return len(ct) - len(prev), nil
 		}
 		prev = ct
-		prefix = append(prefix, 0x41)
 	}
-	if bsize == 0 {
-		return 0, NoBlockSizeFoundErr
-	}
-	return bsize, nil
+	return 0, NoBlockSizeFoundErr
 }
 
 func RepeatedBytes(b byte, l int) []byte {

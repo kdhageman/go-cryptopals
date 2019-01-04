@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-func oracle(secret []byte) Oracle {
-	key := RandomKey(16)
+func oracle(secret []byte, ksize int) Oracle {
+	key := RandomKey(ksize)
 
 	f := func(pt []byte) ([]byte, error) {
 		pt = append(pt, secret...)
@@ -43,7 +43,7 @@ func TestPaddingOracleAttack(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := oracle(tt.secret)
+			f := oracle(tt.secret, 16)
 			pt, err := PaddingOracleAttack(f)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
@@ -73,4 +73,38 @@ func TestEcb(t *testing.T) {
 		t.Fatalf("Expected new plain text %q to equal old plain text %q", aurora.Cyan(newPt), aurora.Cyan(pt))
 	}
 
+}
+
+func TestDetectBlocksize(t *testing.T) {
+	tests := []struct {
+		name  string
+		bsize int
+	}{
+		{
+			name:  "Block size of 16",
+			bsize: 16,
+		},
+		{
+			name:  "Block size of 24",
+			bsize: 24,
+		},
+		{
+			name:  "Block size of 32",
+			bsize: 32,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := oracle([]byte("abcdefghijklmnopqrstuvwxyz"), tt.bsize)
+
+			actual, err := DetectBlocksize(o)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			if actual != tt.bsize {
+				t.Fatalf("Expected block size %d, but got %d", tt.bsize, actual)
+			}
+		})
+	}
 }
