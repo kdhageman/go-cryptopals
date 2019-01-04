@@ -39,7 +39,7 @@ func (c *ch) Solve() error {
 	if err != nil {
 		return err
 	}
-	pt, err := crypto.RandomPaddingOracleAttack(f)
+	pt, err := crypto.PaddingOracleAttack(f)
 	if err != nil {
 		return err
 	}
