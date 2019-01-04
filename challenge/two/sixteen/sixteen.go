@@ -1,35 +1,33 @@
 package sixteen
 
 import (
-	"errors"
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
+	"github.com/logrusorgru/aurora"
 	"strings"
 )
 
 var (
-	InvalidDataErr = errors.New("part must contain a single '=' character")
-
 	order = []string{"comment1", "userdata", "comment2"}
 )
 
-type Data map[string]string
+type User map[string]string
 
-func (d *Data) String() string {
+func (u *User) String() string {
 	var s []string
 	for _, k := range order {
-		s = append(s, fmt.Sprintf("%s=%s", k, (*d)[k]))
+		s = append(s, fmt.Sprintf("%s=%s", k, (*u)[k]))
 	}
 	return strings.Join(s, ";")
 }
 
-func (d *Data) IsAdmin() bool {
-	admin, ok := (*d)["admin"]
+func (u *User) IsAdmin() bool {
+	admin, ok := (*u)["admin"]
 	return ok && admin == "true"
 }
 
-func FromUserData(userdata string) Data {
+func FromUserData(userdata string) User {
 	r := strings.NewReplacer(";", "", "=", "")
 	userdata = r.Replace(userdata)
 	d := map[string]string{}
@@ -39,15 +37,16 @@ func FromUserData(userdata string) Data {
 	return d
 }
 
-func FromBytes(b []byte) (Data, error) {
+func FromBytes(b []byte) (User, error) {
 	d := map[string]string{}
 	parts := strings.Split(string(b), ";")
 	for _, part := range parts {
 		subparts := strings.Split(part, "=")
-		if len(subparts) != 2 {
-			return nil, InvalidDataErr
+		k := subparts[0]
+		v := ""
+		if len(subparts) > 1 {
+			v = subparts[1]
 		}
-		k, v := subparts[0], subparts[1]
 		d[k] = v
 	}
 	return d, nil
@@ -72,11 +71,24 @@ type ch struct{}
 
 func (c *ch) Solve() error {
 	enc, dec := oracle()
-	ct, err := enc([]byte("yea"))
+	ct, err := enc([]byte(" admin true"))
 	if err != nil {
 		return err
 	}
-	pt, err := dec(ct)
+
+	semicolon, _ := crypto.Xor([]byte(" "), []byte(";"))
+	equals, _ := crypto.Xor([]byte(" "), []byte("="))
+
+	dSemicolon, _ := crypto.Xor(semicolon, []byte{ct[16]})
+	dEquals, _ := crypto.Xor(equals, []byte{ct[22]})
+
+	craftedCt := ct[:16]
+	craftedCt = append(craftedCt, dSemicolon...)
+	craftedCt = append(craftedCt, ct[17:22]...)
+	craftedCt = append(craftedCt, dEquals...)
+	craftedCt = append(craftedCt, ct[23:]...)
+
+	pt, err := dec(craftedCt)
 	if err != nil {
 		return err
 	}
@@ -84,7 +96,8 @@ func (c *ch) Solve() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(d.String())
+
+	fmt.Printf("User is admin: %t\n", aurora.Cyan(d.IsAdmin()))
 
 	return nil
 }
