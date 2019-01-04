@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	BlocksizeErr      = errors.New("block size does not divided data")
+	BlocksizeErr      = errors.New("block size does not divide data")
 	InvalidPaddingErr = errors.New("data has invalid padding")
 )
 
