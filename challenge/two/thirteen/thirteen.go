@@ -1,6 +1,7 @@
 package thirteen
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
@@ -73,16 +74,17 @@ type ch struct{}
 func (c *ch) Solve() error {
 	e, d := oracle()
 
-	padding := crypto.RepeatedBytes(0xff, 10)
+	padding := bytes.Repeat([]byte{0xff}, 10)
+
 	padding = append(padding, []byte("admin")...)
-	padding = append(padding, crypto.RepeatedBytes(0x11, 11)...)
+	padding = append(padding, bytes.Repeat([]byte{0x11}, 11)...)
 
 	adminCt, err := e(padding)
 	if err != nil {
 		return err
 	}
 
-	padding = crypto.RepeatedBytes(0xff, 13)
+	padding = bytes.Repeat([]byte{0xff}, 13)
 	baseCt, err := e(padding)
 	if err != nil {
 		return err

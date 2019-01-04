@@ -181,8 +181,101 @@ func TestEncryptEcb(t *testing.T) {
 				t.Fatalf("Unexpected error: %s", err)
 			}
 			if !bytes.Equal(ct, tt.expected) {
-				t.Fatalf("Expected cipher text %q, but got %q", tt.expected, ct)
+				t.Fatalf("Expected cipher text %x, but got %x", aurora.Cyan(tt.expected), aurora.Cyan(ct))
 			}
 		})
+	}
+}
+
+func TestEncryptCbc(t *testing.T) {
+	tests := []struct {
+		name     string
+		pt       []byte
+		key      []byte
+		iv       []byte
+		expected []byte
+	}{
+		{
+			name:     "16 byte key",
+			pt:       []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			key:      []byte("aaaaaaaaaaaaaaaa"),
+			iv:       bytes.Repeat([]byte{0x00}, 16),
+			expected: []byte{0x51, 0x88, 0xc6, 0x47, 0x4b, 0x22, 0x8c, 0xbd, 0xd2, 0x42, 0xe9, 0x12, 0x5e, 0xbe, 0x1d, 0x53, 0x1c, 0xc9, 0x47, 0x6d, 0xe0, 0x92, 0x39, 0x87, 0x28, 0xf0, 0xd7, 0x85, 0xf8, 0x48, 0x46, 0xe8},
+		},
+		{
+			name:     "32 byte key",
+			pt:       []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			key:      []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			iv:       bytes.Repeat([]byte{0x00}, 16),
+			expected: []byte{0x2c, 0xcd, 0x45, 0x89, 0x6f, 0xc3, 0x52, 0x5e, 0x03, 0xc7, 0xcb, 0x97, 0xb6, 0x68, 0x95, 0xff, 0xd5, 0x6b, 0x1e, 0x96, 0x5b, 0x58, 0xde, 0x59, 0x19, 0xcd, 0xb8, 0xbc, 0x55, 0x90, 0x9e, 0xad},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ct, err := EncryptCbc(tt.pt, tt.key, tt.iv)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if !bytes.Equal(ct, tt.expected) {
+				t.Fatalf("Expected cipher text %x, but got %x", aurora.Cyan(tt.expected), aurora.Cyan(ct))
+			}
+		})
+	}
+}
+
+func TestDecryptCbc(t *testing.T) {
+	tests := []struct {
+		name     string
+		ct       []byte
+		key      []byte
+		iv       []byte
+		expected []byte
+	}{
+		{
+			name:     "16 byte key",
+			ct:       []byte{0x51, 0x88, 0xc6, 0x47, 0x4b, 0x22, 0x8c, 0xbd, 0xd2, 0x42, 0xe9, 0x12, 0x5e, 0xbe, 0x1d, 0x53, 0x1c, 0xc9, 0x47, 0x6d, 0xe0, 0x92, 0x39, 0x87, 0x28, 0xf0, 0xd7, 0x85, 0xf8, 0x48, 0x46, 0xe8},
+			key:      []byte("aaaaaaaaaaaaaaaa"),
+			iv:       bytes.Repeat([]byte{0x00}, 16),
+			expected: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		},
+		{
+			name:     "32 byte key",
+			ct:       []byte{0x2c, 0xcd, 0x45, 0x89, 0x6f, 0xc3, 0x52, 0x5e, 0x03, 0xc7, 0xcb, 0x97, 0xb6, 0x68, 0x95, 0xff, 0xd5, 0x6b, 0x1e, 0x96, 0x5b, 0x58, 0xde, 0x59, 0x19, 0xcd, 0xb8, 0xbc, 0x55, 0x90, 0x9e, 0xad},
+			key:      []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+			iv:       bytes.Repeat([]byte{0x00}, 16),
+			expected: []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ct, err := DecryptCbc(tt.ct, tt.key, tt.iv)
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+			if !bytes.Equal(ct, tt.expected) {
+				t.Fatalf("Expected cipher text %x, but got %x", aurora.Cyan(tt.expected), aurora.Cyan(ct))
+			}
+		})
+	}
+}
+
+func TestCBC(t *testing.T) {
+	original := "some kind of somewhat long plain text!"
+
+	pt := []byte(original)
+	key := bytes.Repeat([]byte{0x90}, 16)
+	iv := bytes.Repeat([]byte{0x90}, 16)
+
+	ct, err := EncryptCbc(pt, key, iv)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	actual, err := DecryptCbc(ct, key, iv)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if string(actual) != original {
+		t.Fatalf("Expected encrypted string %s, but got %s", aurora.Cyan(original), aurora.Cyan(string(actual)))
 	}
 }
