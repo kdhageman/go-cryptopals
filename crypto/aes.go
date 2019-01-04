@@ -78,16 +78,18 @@ func DecryptEcb(ct []byte, key []byte) ([]byte, error) {
 	return pt, nil
 }
 
-func EncryptCbc(pt []byte, key []byte, iv []byte) ([]byte, error) {
+func EncryptCbc(pt []byte, key []byte, initialIv []byte) ([]byte, error) {
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	pt = PadPkcs7(pt, len(key))
+	pt = PadPkcs7(pt, aes.BlockSize)
 
+	iv := make([]byte, len(initialIv))
+	copy(iv, initialIv)
 	var ct []byte
-	blocks := InBlocks(pt, len(key))
+	blocks := InBlocks(pt, aes.BlockSize)
 	for _, block := range blocks {
 		xored, err := Xor(block, iv)
 		if err != nil {
@@ -100,18 +102,21 @@ func EncryptCbc(pt []byte, key []byte, iv []byte) ([]byte, error) {
 	return ct, nil
 }
 
-func DecryptCbc(ct []byte, key []byte, iv []byte) ([]byte, error) {
+func DecryptCbc(ct []byte, key []byte, initialIv []byte) ([]byte, error) {
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	if len(ct)%len(key) != 0 {
-		return nil, CiphertextSizeErr{len(ct), len(key)}
+	if len(ct)%aes.BlockSize != 0 {
+		return nil, CiphertextSizeErr{len(ct), aes.BlockSize}
 	}
+
+	iv := make([]byte, len(initialIv))
+	copy(iv, initialIv)
 	var pt []byte
-	blocks := InBlocks(ct, len(key))
+	blocks := InBlocks(ct, aes.BlockSize)
 	for _, block := range blocks {
-		decrypted := make([]byte, len(block))
+		decrypted := make([]byte, aes.BlockSize)
 		c.Decrypt(decrypted, block)
 		xored, err := Xor(decrypted, iv)
 		if err != nil {
@@ -120,7 +125,7 @@ func DecryptCbc(ct []byte, key []byte, iv []byte) ([]byte, error) {
 		pt = append(pt, xored...)
 		iv = block
 	}
-	return pt, nil
+	return RemovePkcs7(pt, 16)
 }
 
 func RandomKey(ksize int) []byte {
