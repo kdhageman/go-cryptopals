@@ -1,7 +1,14 @@
 package crypto
 
 import (
+	"crypto/aes"
 	"fmt"
+	"github.com/pkg/errors"
+)
+
+var (
+	BlocksizeErr      = errors.New("block size does not divided data")
+	InvalidPaddingErr = errors.New("data has invalid padding")
 )
 
 type DataSizeErr struct {
@@ -31,4 +38,22 @@ func PadPkcs7(b []byte, bsize int) []byte {
 	res = append(res, lastBlock...)
 
 	return res
+}
+
+func RemovePkcs7(b []byte, bsize int) ([]byte, error) {
+	if len(b)%bsize != 0 {
+		return nil, BlocksizeErr
+	}
+	paddingByte := b[len(b)-1]
+	if paddingByte >= aes.BlockSize {
+		return b, nil
+	}
+
+	for i := 0; i < int(paddingByte); i++ {
+		if b[len(b)-1-i] != paddingByte {
+			return nil, InvalidPaddingErr
+		}
+	}
+
+	return b[:len(b)-int(paddingByte)], nil
 }
