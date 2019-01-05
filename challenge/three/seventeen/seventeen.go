@@ -5,14 +5,23 @@ import (
 	"bytes"
 	"crypto/aes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
-	"github.com/logrusorgru/aurora"
 	"math"
 	"math/rand"
 	"os"
 )
+
+var (
+	MultipleCandidateErr = errors.New("found multiple candidates for plain text byte")
+	NoCandidateErr       = errors.New("found no candidates for plain text byte")
+)
+
+func init() {
+	//rand.Seed(time.Now().Unix())
+}
 
 func readInput() ([][]byte, error) {
 	f, err := os.Open("challenge/three/seventeen/input.txt")
@@ -69,6 +78,47 @@ func oracle() (Encryptor, Decryptor, error) {
 
 type ch struct{}
 
+//func DecryptBlock(ct []byte, dec Decryptor) ([]byte, error) {
+//	var pt []byte
+//	for i:=0; i<aes.BlockSize; i++ {
+//		b, err := DecryptByteInBlock(ct, i, dec)
+//		if err != nil {
+//			return nil, err
+//		}
+//		pt = append(pt, b)
+//	}
+//	return pt, nil
+//}
+
+func DecryptByteInBlock(ct []byte, j int, dec Decryptor) (byte, error) {
+	var candidates []byte
+	for i := 0; i <= math.MaxUint8; i++ {
+		tampered := bytes.Repeat([]byte{0xe0}, j)
+		tampered = append(tampered, byte(i))
+		tampered = append(tampered, bytes.Repeat([]byte{byte(16 - j)}, 15-j)...)
+
+		validPadding, err := dec(append(tampered, ct...))
+		if err != nil {
+			return 0x00, err
+		}
+		if validPadding {
+			ptByte, err := crypto.Xor([]byte{byte(i)}, []byte{byte(16 - j)})
+			if err != nil {
+				return 0x00, err
+			}
+			candidates = append(candidates, ptByte...)
+		}
+	}
+	switch len(candidates) {
+	case 0:
+		return 0x00, NoCandidateErr
+	case 1:
+		return candidates[0], nil
+	default:
+		return 0x00, MultipleCandidateErr
+	}
+}
+
 func (c *ch) Solve() error {
 	enc, dec, err := oracle()
 	var pt []byte
@@ -80,25 +130,12 @@ func (c *ch) Solve() error {
 
 	// todo: all blocks
 	// todo: all bytes in block
-
-	var candidates []byte
-	for i := 0; i <= math.MaxUint8; i++ {
-		target := ct[len(ct)-aes.BlockSize:]
-		tampered := bytes.Repeat([]byte{0xff}, 15)
-		tampered = append(tampered, byte(i))
-		tampered = append(tampered, target...)
-
-		validPadding, err := dec(tampered)
-		if err != nil {
-			return err
-		}
-		if validPadding {
-			candidates = append(candidates, byte(i))
-		}
+	b, err := DecryptByteInBlock(ct[:16], 15, dec)
+	if err != nil {
+		return err
 	}
-
-	fmt.Printf("Possible candidates: %s\n", aurora.Cyan(fmt.Sprintf("%q", candidates)))
-	pt = append(pt, candidates...)
+	pt = append([]byte{b}, pt...)
+	fmt.Println(pt)
 
 	return nil
 }
