@@ -131,7 +131,6 @@ func (c *ch) Solve() error {
 	}
 
 	// todo: all blocks
-	// todo: all bytes in block
 	b, err := dec.DecryptBlock(ct[:16])
 	if err != nil {
 		return err
