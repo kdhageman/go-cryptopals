@@ -3,6 +3,7 @@ package seventeen
 import (
 	"bufio"
 	"bytes"
+	"crypto/aes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -52,7 +53,7 @@ type Encrypt func() ([]byte, error)
 type Decrypt func(ct []byte) (validPadding bool, error error)
 
 func (d Decrypt) DecryptBlock(ct []byte) ([]byte, error) {
-	pt := make([]byte, 16)
+	pt := make([]byte, aes.BlockSize)
 	for i := 15; i >= 0; i-- {
 		b, err := d.DecryptByteInBlock(ct, i, pt)
 		if err != nil {
@@ -65,11 +66,13 @@ func (d Decrypt) DecryptBlock(ct []byte) ([]byte, error) {
 
 func (d Decrypt) DecryptByteInBlock(ct []byte, j int, pt []byte) (byte, error) {
 	var candidates []byte
+	padbyte := byte(aes.BlockSize - j)
+
 	for i := 0; i <= math.MaxUint8; i++ {
 		tampered := bytes.Repeat([]byte{0xe0}, j)
 		tampered = append(tampered, byte(i))
-		for k := j + 1; k < 16; k++ {
-			tampered = append(tampered, pt[k]^byte(16-j))
+		for k := j + 1; k < aes.BlockSize; k++ {
+			tampered = append(tampered, pt[k]^padbyte)
 		}
 
 		validPadding, err := d(append(tampered, ct...))
@@ -77,11 +80,11 @@ func (d Decrypt) DecryptByteInBlock(ct []byte, j int, pt []byte) (byte, error) {
 			return 0x00, err
 		}
 		if validPadding {
-			ptByte, err := crypto.Xor([]byte{byte(i)}, []byte{byte(16 - j)})
+			ptByte := byte(i) ^ padbyte
 			if err != nil {
 				return 0x00, err
 			}
-			candidates = append(candidates, ptByte...)
+			candidates = append(candidates, ptByte)
 		}
 	}
 	switch len(candidates) {
@@ -99,8 +102,8 @@ func oracle() (Encrypt, Decrypt, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	key := crypto.RandomKey(16)
-	iv := crypto.RandomKey(16)
+	key := crypto.RandomKey(aes.BlockSize)
+	iv := crypto.RandomKey(aes.BlockSize)
 
 	enc := func() ([]byte, error) {
 		pt := randomPt(pts)
@@ -130,14 +133,14 @@ func (c *ch) Solve() error {
 		return err
 	}
 
-	// todo: all blocks
-	b, err := dec.DecryptBlock(ct[:16])
-	if err != nil {
-		return err
+	for _, block := range crypto.InBlocks(ct, aes.BlockSize) {
+		b, err := dec.DecryptBlock(block)
+		if err != nil {
+			return err
+		}
+		pt = append(pt, b...)
 	}
-	pt = append(pt, b...)
-	fmt.Println(pt)
-
+	fmt.Println(string(pt))
 	return nil
 }
 
