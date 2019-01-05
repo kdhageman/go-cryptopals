@@ -80,6 +80,11 @@ func TestRemovePkcs7(t *testing.T) {
 			b:           append(bytes.Repeat(dbyte, 15), 0x00),
 			expectedErr: InvalidPaddingErr,
 		},
+		{
+			name:     "Single block of padding bytes",
+			b:        bytes.Repeat([]byte{0x10}, 16),
+			expected: []byte{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
