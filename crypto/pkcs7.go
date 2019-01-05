@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"crypto/aes"
+	"bytes"
 	"fmt"
 	"github.com/pkg/errors"
 )
@@ -21,39 +21,25 @@ func (err DataSizeErr) Error() string {
 }
 
 func PadPkcs7(b []byte, bsize int) []byte {
-	if len(b)%bsize == 0 {
-		return b
+	padlength := len(b) % bsize
+	if padlength == 0 {
+		padlength = bsize
 	}
 
-	blocks := InBlocks(b, bsize)
-	lastBlock := blocks[len(blocks)-1]
-	d := bsize - len(lastBlock)
-	for i := 0; i < d; i++ {
-		lastBlock = append(lastBlock, byte(d))
-	}
-	var res []byte
-	for i := 0; i < len(blocks)-1; i++ {
-		res = append(res, blocks[i]...)
-	}
-	res = append(res, lastBlock...)
-
-	return res
+	return append(b, bytes.Repeat([]byte{byte(padlength)}, padlength)...)
 }
 
 func RemovePkcs7(b []byte, bsize int) ([]byte, error) {
 	if len(b)%bsize != 0 {
 		return nil, BlocksizeErr
 	}
-	paddingByte := b[len(b)-1]
-	if paddingByte >= aes.BlockSize {
-		return b, nil
-	}
 
-	for i := 0; i < int(paddingByte); i++ {
-		if b[len(b)-1-i] != paddingByte {
+	padbyte := b[len(b)-1]
+	padlen := int(padbyte)
+	for i := len(b) - 1; i > len(b)-1-padlen; i-- {
+		if b[i] != padbyte {
 			return nil, InvalidPaddingErr
 		}
 	}
-
-	return b[:len(b)-int(paddingByte)], nil
+	return b[:len(b)-padlen], nil
 }
