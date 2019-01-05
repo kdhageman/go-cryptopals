@@ -66,8 +66,18 @@ func TestRemovePkcs7(t *testing.T) {
 			expectedErr: BlocksizeErr,
 		},
 		{
-			name:        "Invalid padding",
+			name:        "Too short padding",
 			b:           append(bytes.Repeat(dbyte, 11), bytes.Repeat([]byte{6}, 5)...),
+			expectedErr: InvalidPaddingErr,
+		},
+		{
+			name:        "No padding",
+			b:           bytes.Repeat(dbyte, 16),
+			expectedErr: InvalidPaddingErr,
+		},
+		{
+			name:        "Zero value padding",
+			b:           append(bytes.Repeat(dbyte, 15), 0x00),
 			expectedErr: InvalidPaddingErr,
 		},
 	}
