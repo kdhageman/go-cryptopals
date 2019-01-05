@@ -2,9 +2,14 @@ package seventeen
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/aes"
 	"encoding/base64"
+	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
+	"github.com/logrusorgru/aurora"
+	"math"
 	"math/rand"
 	"os"
 )
@@ -35,7 +40,7 @@ func randomPt(pts [][]byte) []byte {
 }
 
 type Encryptor func() ([]byte, error)
-type Decryptor func(ct []byte) (bool, error)
+type Decryptor func(ct []byte) (validPadding bool, error error)
 
 func oracle() (Encryptor, Decryptor, error) {
 	pts, err := readInput()
@@ -51,8 +56,11 @@ func oracle() (Encryptor, Decryptor, error) {
 	}
 	dec := func(ct []byte) (bool, error) {
 		_, err := crypto.DecryptCbc(ct, key, iv)
-		if err == crypto.InvalidPaddingErr || err == crypto.BlocksizeErr {
-			return false, nil
+		if err != nil {
+			if err == crypto.InvalidPaddingErr || err == crypto.BlocksizeErr {
+				return false, nil
+			}
+			return false, err
 		}
 		return true, nil
 	}
@@ -62,10 +70,35 @@ func oracle() (Encryptor, Decryptor, error) {
 type ch struct{}
 
 func (c *ch) Solve() error {
-	_, _, err := oracle()
+	enc, dec, err := oracle()
+	var pt []byte
+
+	ct, err := enc()
 	if err != nil {
 		return err
 	}
+
+	// todo: all blocks
+	// todo: all bytes in block
+
+	var candidates []byte
+	for i := 0; i <= math.MaxUint8; i++ {
+		target := ct[len(ct)-aes.BlockSize:]
+		tampered := bytes.Repeat([]byte{0xff}, 15)
+		tampered = append(tampered, byte(i))
+		tampered = append(tampered, target...)
+
+		validPadding, err := dec(tampered)
+		if err != nil {
+			return err
+		}
+		if validPadding {
+			candidates = append(candidates, byte(i))
+		}
+	}
+
+	fmt.Printf("Possible candidates: %s\n", aurora.Cyan(fmt.Sprintf("%q", candidates)))
+	pt = append(pt, candidates...)
 
 	return nil
 }

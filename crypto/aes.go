@@ -187,7 +187,7 @@ func DetectPrefixSize(oracle Oracle, bsize int) (int, error) {
 	return 0, nil
 }
 
-func PaddingOracleAttack(oracle Oracle) ([]byte, error) {
+func EbcPaddingOracleAttack(oracle Oracle) ([]byte, error) {
 	bsize, err := DetectBlocksize(oracle)
 	if err != nil {
 		return nil, err

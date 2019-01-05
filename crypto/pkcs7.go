@@ -21,7 +21,7 @@ func (err DataSizeErr) Error() string {
 }
 
 func PadPkcs7(b []byte, bsize int) []byte {
-	padlength := len(b) % bsize
+	padlength := bsize - (len(b) % bsize)
 	if padlength == 0 {
 		padlength = bsize
 	}
