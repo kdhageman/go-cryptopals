@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
-	"math"
 	"math/rand"
 	"os"
 )
@@ -48,53 +47,42 @@ func randomPt(pts [][]byte) []byte {
 	return pts[i]
 }
 
-type Encrypt func() ([]byte, error)
+type Encrypt func() (ct []byte, iv []byte, err error)
 
 type Decrypt func(ct []byte) (validPadding bool, error error)
 
-func (d Decrypt) DecryptBlock(ct []byte) ([]byte, error) {
-	pt := make([]byte, aes.BlockSize)
-	for i := 15; i >= 0; i-- {
-		b, err := d.DecryptByteInBlock(ct, i, pt)
-		if err != nil {
-			return pt, err
+func (d Decrypt) DecryptByteInBlock(target []byte, i int, prev []byte, pt []byte) (byte, error) {
+	p := byte(16 - i)
+	for j := 0; j < 256; j++ {
+		crafted := make([]byte, 16)
+		for k := 0; k < 16; k++ {
+			crafted[k] = prev[k] ^ pt[k] ^ p
 		}
-		pt[i] = b
-	}
-	return pt, nil
-}
+		crafted[i] = byte(j)
 
-func (d Decrypt) DecryptByteInBlock(ct []byte, j int, pt []byte) (byte, error) {
-	var candidates []byte
-	padbyte := byte(aes.BlockSize - j)
-
-	for i := 0; i <= math.MaxUint8; i++ {
-		tampered := bytes.Repeat([]byte{0xe0}, j)
-		tampered = append(tampered, byte(i))
-		for k := j + 1; k < aes.BlockSize; k++ {
-			tampered = append(tampered, pt[k]^padbyte)
-		}
-
-		validPadding, err := d(append(tampered, ct...))
+		payload := append(crafted, target...)
+		valid, err := d(payload)
 		if err != nil {
 			return 0x00, err
 		}
-		if validPadding {
-			ptByte := byte(i) ^ padbyte
-			if err != nil {
-				return 0x00, err
-			}
-			candidates = append(candidates, ptByte)
+		if valid {
+			return byte(j) ^ p ^ prev[i], nil
 		}
 	}
-	switch len(candidates) {
-	case 0:
-		return 0x00, NoCandidateErr
-	case 1:
-		return candidates[0], nil
-	default:
-		return 0x00, MultipleCandidateErr
+
+	return 0x00, NoCandidateErr
+}
+
+func (d Decrypt) DecryptBlock(ct []byte, prev []byte) ([]byte, error) {
+	pt := bytes.Repeat([]byte{0xff}, 16)
+	for i := 15; i >= 0; i-- {
+		p, err := d.DecryptByteInBlock(ct, i, prev, pt)
+		if err != nil {
+			return nil, err
+		}
+		pt[i] = p
 	}
+	return pt, nil
 }
 
 func oracle() (Encrypt, Decrypt, error) {
@@ -105,9 +93,10 @@ func oracle() (Encrypt, Decrypt, error) {
 	key := crypto.RandomKey(aes.BlockSize)
 	iv := crypto.RandomKey(aes.BlockSize)
 
-	enc := func() ([]byte, error) {
+	enc := func() ([]byte, []byte, error) {
 		pt := randomPt(pts)
-		return crypto.EncryptCbc(pt, key, iv)
+		ct, err := crypto.EncryptCbc(pt, key, iv)
+		return ct, iv, err
 	}
 	dec := func(ct []byte) (bool, error) {
 		_, err := crypto.DecryptCbc(ct, key, iv)
@@ -126,21 +115,43 @@ type ch struct{}
 
 func (c *ch) Solve() error {
 	enc, dec, err := oracle()
-	var pt []byte
+	var pt byte
 
-	ct, err := enc()
+	ct, _, err := enc()
 	if err != nil {
 		return err
 	}
 
-	for _, block := range crypto.InBlocks(ct, aes.BlockSize) {
-		b, err := dec.DecryptBlock(block)
+	prev := ct[len(ct)-32 : len(ct)-16]
+	target := ct[len(ct)-16:]
+
+	for i := 0; i < 256; i++ {
+		padbyte := byte(1)
+		tamperedBlock := bytes.Repeat([]byte{0xff}, 16)
+		tamperedBlock[15] = byte(i)
+
+		payload := append(tamperedBlock, target...)
+		valid, err := dec(payload)
 		if err != nil {
 			return err
 		}
-		pt = append(pt, b...)
+		if valid {
+			pt = byte(i) ^ padbyte ^ ct[len(ct)-17]
+		}
 	}
-	fmt.Println(string(pt))
+	fmt.Println(pt)
+
+	pt, err = dec.DecryptByteInBlock(target, 15, ct[len(ct)-32:len(ct)-16], bytes.Repeat([]byte{0x00}, 16))
+	if err != nil {
+		return err
+	}
+	fmt.Println(pt)
+
+	b, err := dec.DecryptBlock(target, prev)
+	if err != nil {
+		return err
+	}
+	fmt.Println(b)
 	return nil
 }
 
