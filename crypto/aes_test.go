@@ -279,3 +279,69 @@ func TestCBC(t *testing.T) {
 		t.Fatalf("Expected encrypted string %s, but got %s", aurora.Cyan(original), aurora.Cyan(string(actual)))
 	}
 }
+
+func TestIntToBytes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    uint64
+		expected []byte
+	}{
+		{
+			name:     "Single byte",
+			input:    127,
+			expected: []byte{127},
+		},
+		{
+			name:     "Two bytes",
+			input:    257,
+			expected: []byte{1, 1},
+		},
+		{
+			name:     "Three bytes",
+			input:    65793,
+			expected: []byte{1, 1, 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := IntToBytes(tt.input)
+			if !bytes.Equal(tt.expected, actual) {
+				t.Fatalf("Expected bytes %x, but got %x", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestReverse(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		expected []byte
+	}{
+		{
+			name:     "Single byte",
+			input:    []byte{1},
+			expected: []byte{1},
+		},
+		{
+			name:     "Even number of bytes",
+			input:    []byte{1, 2, 3, 4},
+			expected: []byte{4, 3, 2, 1},
+		},
+		{
+			name:     "Uneven number of bytes",
+			input:    []byte{1, 2, 3, 4, 5},
+			expected: []byte{5, 4, 3, 2, 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := Reverse(tt.input)
+			if !bytes.Equal(tt.expected, actual) {
+				t.Fatalf("Expected bytes %x, but got %x", tt.expected, actual)
+			}
+		})
+	}
+}

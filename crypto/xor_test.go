@@ -1,9 +1,40 @@
 package crypto
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 )
+
+func TestXor(t *testing.T) {
+	tests := []struct {
+		name     string
+		a        []byte
+		b        []byte
+		expected []byte
+	}{
+		{
+			name:     "Blocks of equal length",
+			a:        []byte{0x10, 0x10, 0x10},
+			b:        []byte{0x01, 0x01, 0x01},
+			expected: []byte{0x11, 0x11, 0x11},
+		},
+		{
+			name:     "Blocks of unequal length",
+			a:        []byte{0x1, 0x2},
+			b:        []byte{0x4, 0x2, 0x1},
+			expected: []byte{0x5, 0x0},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := Xor(tt.a, tt.b)
+			if !bytes.Equal(tt.expected, actual) {
+				t.Fatalf("Expected bytes %x, but got %x", tt.expected, actual)
+			}
+		})
+	}
+}
 
 func TestHammingDistance(t *testing.T) {
 	a := []byte("this is a test")
@@ -56,7 +87,6 @@ func TestInBlocks(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestTranspose(t *testing.T) {

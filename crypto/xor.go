@@ -9,31 +9,32 @@ var (
 	InvalidLengthErr = errors.New("arrays have different lengths")
 )
 
-func Xor(pt []byte, key []byte) ([]byte, error) {
-	if len(pt) != len(key) {
-		return nil, InvalidLengthErr
+func Xor(a, b []byte) []byte {
+	l := len(a)
+	if len(b) < len(a) {
+		l = len(b)
 	}
-	var ct []byte
-	for i := range pt {
-		ct = append(ct, pt[i]^key[i])
+	var res []byte
+	for i := 0; i < l; i++ {
+		res = append(res, a[i]^b[i])
 	}
 
-	return ct, nil
+	return res
 }
 
-func XorSingle(pt []byte, key byte) []byte {
+func XorSingle(a []byte, s byte) []byte {
 	var res []byte
-	for i := range pt {
-		res = append(res, pt[i]^key)
+	for i := range a {
+		res = append(res, a[i]^s)
 	}
 	return res
 }
 
-func XorRepeat(pt []byte, key []byte) []byte {
+func XorRepeat(a, r []byte) []byte {
 	var ct []byte
 	i := 0
-	for _, b := range pt {
-		k := key[i%len(key)]
+	for _, b := range a {
+		k := r[i%len(r)]
 		ct = append(ct, b^k)
 		i++
 	}

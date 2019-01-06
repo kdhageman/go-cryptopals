@@ -3,6 +3,8 @@ package crypto
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/cipher"
+	"encoding/binary"
 	"fmt"
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
@@ -91,10 +93,7 @@ func EncryptCbc(pt []byte, key []byte, initialIv []byte) ([]byte, error) {
 	var ct []byte
 	blocks := InBlocks(pt, aes.BlockSize)
 	for _, block := range blocks {
-		xored, err := Xor(block, iv)
-		if err != nil {
-			return nil, err
-		}
+		xored := Xor(block, iv)
 		c.Encrypt(iv, xored)
 		ct = append(ct, iv...)
 	}
@@ -118,10 +117,7 @@ func DecryptCbc(ct []byte, key []byte, initialIv []byte) ([]byte, error) {
 	for _, block := range blocks {
 		decrypted := make([]byte, aes.BlockSize)
 		c.Decrypt(decrypted, block)
-		xored, err := Xor(decrypted, iv)
-		if err != nil {
-			return nil, err
-		}
+		xored := Xor(decrypted, iv)
 		pt = append(pt, xored...)
 		iv = block
 	}
@@ -240,4 +236,73 @@ Outer:
 	// first bsize-1 padding bits not returned
 	// last byte is a 0x01 padding byte and therefore should not be returned
 	return pt[bsize-1 : len(pt)-1], nil
+}
+
+func IntToBytes(i uint64) []byte {
+	var res []byte
+	for i > 0 {
+		res = append([]byte{byte(i % 256)}, res...)
+		i = i >> 8
+	}
+	return res
+}
+
+func Reverse(inp []byte) []byte {
+	res := make([]byte, len(inp))
+	for i, b := range inp {
+		res[len(inp)-i-1] = b
+	}
+	return res
+}
+
+type Ctr interface {
+	Encrypt(pt []byte) ([]byte, error)
+	Decrypt(ct []byte) ([]byte, error)
+}
+
+type ctr struct {
+	nonce   []byte
+	counter int64
+	cipher  cipher.Block
+}
+
+func (c *ctr) Encrypt(pt []byte) ([]byte, error) {
+	var ct []byte
+
+	for _, block := range InBlocks(pt, aes.BlockSize) {
+		counter := make([]byte, 8)
+		binary.LittleEndian.PutUint64(counter, uint64(c.counter))
+		c.counter++
+
+		input := append(c.nonce, counter...)
+
+		encrypted := make([]byte, aes.BlockSize)
+		c.cipher.Encrypt(encrypted, input)
+
+		xored := Xor(block, encrypted)
+
+		ct = append(ct, xored...)
+	}
+	return ct, nil
+}
+
+func (c *ctr) Decrypt(ct []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func NewCtr(key []byte, nonce uint64) (Ctr, error) {
+	if key == nil {
+		key = RandomKey(aes.BlockSize)
+	}
+	cipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	c := ctr{
+		nonce:   make([]byte, 8),
+		counter: 0,
+		cipher:  cipher,
+	}
+	binary.LittleEndian.PutUint64(c.nonce, nonce)
+	return &c, nil
 }
