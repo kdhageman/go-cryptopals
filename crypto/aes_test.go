@@ -45,7 +45,7 @@ func TestPaddingOracleAttack(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := oracle(tt.secret, []byte(""), 16)
-			pt, err := PaddingOracleAttack(f)
+			pt, err := EbcPaddingOracleAttack(f)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}

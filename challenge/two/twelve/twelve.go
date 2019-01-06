@@ -36,7 +36,7 @@ func (c *ch) Solve() error {
 	if err != nil {
 		return err
 	}
-	pt, err := crypto.PaddingOracleAttack(f)
+	pt, err := crypto.EbcPaddingOracleAttack(f)
 	if err != nil {
 		return err
 	}
