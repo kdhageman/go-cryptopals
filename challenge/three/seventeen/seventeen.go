@@ -11,6 +11,7 @@ import (
 	"github.com/kdhageman/go-cryptopals/crypto"
 	"math/rand"
 	"os"
+	"time"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 )
 
 func init() {
-	//rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().Unix())
 }
 
 func readInput() ([][]byte, error) {
@@ -115,43 +116,25 @@ type ch struct{}
 
 func (c *ch) Solve() error {
 	enc, dec, err := oracle()
-	var pt byte
+	var pt []byte
 
-	ct, _, err := enc()
+	ct, iv, err := enc()
 	if err != nil {
 		return err
 	}
 
-	prev := ct[len(ct)-32 : len(ct)-16]
-	target := ct[len(ct)-16:]
-
-	for i := 0; i < 256; i++ {
-		padbyte := byte(1)
-		tamperedBlock := bytes.Repeat([]byte{0xff}, 16)
-		tamperedBlock[15] = byte(i)
-
-		payload := append(tamperedBlock, target...)
-		valid, err := dec(payload)
+	ct = append(iv, ct...)
+	blocks := crypto.InBlocks(ct, 16)
+	for i := 0; i < len(blocks)-1; i++ {
+		prev, target := blocks[i], blocks[i+1]
+		decrypted, err := dec.DecryptBlock(target, prev)
 		if err != nil {
 			return err
 		}
-		if valid {
-			pt = byte(i) ^ padbyte ^ ct[len(ct)-17]
-		}
+		pt = append(pt, decrypted...)
 	}
-	fmt.Println(pt)
+	fmt.Println(string(pt))
 
-	pt, err = dec.DecryptByteInBlock(target, 15, ct[len(ct)-32:len(ct)-16], bytes.Repeat([]byte{0x00}, 16))
-	if err != nil {
-		return err
-	}
-	fmt.Println(pt)
-
-	b, err := dec.DecryptBlock(target, prev)
-	if err != nil {
-		return err
-	}
-	fmt.Println(b)
 	return nil
 }
 
