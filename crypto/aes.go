@@ -266,20 +266,27 @@ type ctr struct {
 	cipher  cipher.Block
 }
 
+func (c *ctr) nextKeystream() []byte {
+	counter := make([]byte, 8)
+	binary.LittleEndian.PutUint64(counter, uint64(c.counter))
+
+	input := append(c.nonce, counter...)
+
+	encrypted := make([]byte, aes.BlockSize)
+	c.cipher.Encrypt(encrypted, input)
+
+	c.counter++
+
+	return encrypted
+}
+
 func (c *ctr) Encrypt(pt []byte) ([]byte, error) {
 	var ct []byte
+	c.counter = 0
 
 	for _, block := range InBlocks(pt, aes.BlockSize) {
-		counter := make([]byte, 8)
-		binary.LittleEndian.PutUint64(counter, uint64(c.counter))
-		c.counter++
-
-		input := append(c.nonce, counter...)
-
-		encrypted := make([]byte, aes.BlockSize)
-		c.cipher.Encrypt(encrypted, input)
-
-		xored := Xor(block, encrypted)
+		ks := c.nextKeystream()
+		xored := Xor(block, ks)
 
 		ct = append(ct, xored...)
 	}
@@ -287,7 +294,7 @@ func (c *ctr) Encrypt(pt []byte) ([]byte, error) {
 }
 
 func (c *ctr) Decrypt(ct []byte) ([]byte, error) {
-	return nil, nil
+	return c.Encrypt(ct)
 }
 
 func NewCtr(key []byte, nonce uint64) (Ctr, error) {
