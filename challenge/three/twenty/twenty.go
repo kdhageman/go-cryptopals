@@ -1,46 +1,12 @@
-package nineteen
+package twenty
 
 import (
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
+	"github.com/kdhageman/go-cryptopals/challenge/three/nineteen"
 	"github.com/kdhageman/go-cryptopals/crypto"
-	"github.com/kdhageman/go-cryptopals/file"
 	"github.com/logrusorgru/aurora"
-	"math"
 )
-
-func FindKeystreamByte(col []byte, sos bool) byte {
-	minChi, minC := math.MaxFloat64, 0
-	for c := 0; c < 256; c++ {
-		var s []byte
-		for _, b := range col {
-			s = append(s, b^byte(c))
-		}
-		chi := crypto.ChiSquared(string(s), sos)
-		if chi < minChi {
-			minChi = chi
-			minC = c
-		}
-	}
-	return byte(minC)
-}
-
-func EncryptBase64File(filename string, ctr crypto.Ctr) ([][]byte, error) {
-	originals, err := file.ReadBase64Lines(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var cts [][]byte
-	for _, original := range originals {
-		ct, err := ctr.Encrypt(original)
-		if err != nil {
-			return nil, err
-		}
-		cts = append(cts, ct)
-	}
-	return cts, nil
-}
 
 type ch struct{}
 
@@ -50,8 +16,7 @@ func (c *ch) Solve() error {
 	if err != nil {
 		return err
 	}
-
-	cts, err := EncryptBase64File("challenge/three/nineteen/input.txt", ctr)
+	cts, err := nineteen.EncryptBase64File("challenge/three/twenty/input.txt", ctr)
 	if err != nil {
 		return err
 	}
@@ -77,7 +42,7 @@ func (c *ch) Solve() error {
 		if icol == 0 {
 			sos = true
 		}
-		keystream = append(keystream, FindKeystreamByte(col, sos))
+		keystream = append(keystream, nineteen.FindKeystreamByte(col, sos))
 		icol++
 	}
 	keystream[0] ^= 0x20

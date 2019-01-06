@@ -6,9 +6,15 @@ import (
 )
 
 const (
-	NonAlphabetic = 0.0696727022353
-	Other         = 0.0
+	NonAlphabetic    = 0.0696727022353
+	NonAlphabeticSOS = 0.0
+	Other            = 0.0
 )
+
+type param struct {
+	dict          map[int32]float64
+	nonAlphabetic float64
+}
 
 var (
 	EnDict = map[int32]float64{
@@ -40,6 +46,46 @@ var (
 		'z': 0.000606562348872,
 		' ': 0.110656644727,
 	}
+
+	EnDictSOS = map[int32]float64{
+		'a': 0.0945723684,
+		'b': 0.0472274436,
+		'c': 0.0192081767,
+		'd': 0.0184249687,
+		'e': 0.0169956140,
+		'f': 0.0286262531,
+		'g': 0.0101229637,
+		'h': 0.0911066729,
+		'i': 0.1371788847,
+		'j': 0.0069313910,
+		'k': 0.0027999687,
+		'l': 0.0139606830,
+		'm': 0.0359492481,
+		'n': 0.0257283835,
+		'o': 0.0339716479,
+		'p': 0.0202459273,
+		'q': 0.0008027882,
+		'r': 0.0130404135,
+		's': 0.0631461466,
+		't': 0.2335526316,
+		'u': 0.0058544799,
+		'v': 0.0027999687,
+		'w': 0.0606986216,
+		'x': 0.0000391604,
+		'y': 0.0168193922,
+		'z': 0.0001958020,
+	}
+
+	params = map[bool]param{
+		false: {
+			dict:          EnDict,
+			nonAlphabetic: NonAlphabetic,
+		},
+		true: {
+			dict:          EnDictSOS,
+			nonAlphabetic: NonAlphabeticSOS,
+		},
+	}
 )
 
 func emptyDict() map[int32]float64 {
@@ -61,7 +107,7 @@ type counter struct {
 	other         float64
 }
 
-func ChiSquared(s string) float64 {
+func ChiSquared(s string, sos bool) float64 {
 	s = strings.ToLower(s)
 	observations := emptyDict()
 	c := counter{}
@@ -77,13 +123,13 @@ func ChiSquared(s string) float64 {
 	}
 
 	chi := 0.0
-	for k := range EnDict { // [a-zA-Z]
-		expected := EnDict[k] * c.total
+	for k := range params[sos].dict { // [a-zA-Z]
+		expected := params[sos].dict[k] * c.total
 		actual := observations[k]
 		chi += math.Pow(expected-actual, 2)
 	}
-	chi += math.Pow(NonAlphabetic*c.total-c.nonAlphabetic, 2) // for non-alphabetic characters
-	chi += math.Pow(Other*c.total-c.other, 2)                 // for remaining, nonsense characters
+	chi += math.Pow(params[sos].nonAlphabetic*c.total-c.nonAlphabetic, 2) // for non-alphabetic characters
+	chi += math.Pow(Other*c.total-c.other, 2)                             // for remaining, nonsense characters
 
 	return chi
 }
@@ -97,7 +143,7 @@ func FindKey(b []byte) (byte, float64, []byte) {
 	for char != 0xff {
 		curPt := XorSingle(b, byte(char))
 		s := string(curPt)
-		chi := ChiSquared(s)
+		chi := ChiSquared(s, false)
 
 		if chi < score {
 			score = chi
