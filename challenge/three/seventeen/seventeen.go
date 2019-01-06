@@ -1,46 +1,23 @@
 package seventeen
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/aes"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto"
+	"github.com/kdhageman/go-cryptopals/file"
 	"math/rand"
-	"os"
 	"time"
 )
 
 var (
-	MultipleCandidateErr = errors.New("found multiple candidates for plain text byte")
-	NoCandidateErr       = errors.New("found no candidates for plain text byte")
+	NoCandidateErr = errors.New("found no candidates for plain text byte")
 )
 
 func init() {
 	rand.Seed(time.Now().Unix())
-}
-
-func readInput() ([][]byte, error) {
-	f, err := os.Open("challenge/three/seventeen/input.txt")
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var res [][]byte
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		l := scanner.Text()
-		b, err := base64.StdEncoding.DecodeString(l)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, b)
-	}
-	return res, nil
 }
 
 func randomPt(pts [][]byte) []byte {
@@ -87,7 +64,7 @@ func (d Decrypt) DecryptBlock(ct []byte, prev []byte) ([]byte, error) {
 }
 
 func oracle() (Encrypt, Decrypt, error) {
-	pts, err := readInput()
+	pts, err := file.ReadBase64Lines("challenge/three/seventeen/input.txt")
 	if err != nil {
 		return nil, nil, err
 	}
