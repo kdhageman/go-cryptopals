@@ -66,8 +66,7 @@ func (mt *mersenneTwister) Seed(seed int) {
 	mt.index = mt.params.n
 	mt.state[0] = seed
 	for i := 1; i < mt.params.n; i++ {
-		v := f*(mt.state[i-1]^(mt.state[i-1]>>(mt.params.w-2))) + i
-		mt.state[i] = v & (1<<mt.params.w - 1)
+		mt.state[i] = f*(mt.state[i-1]^(mt.state[i-1]>>(mt.params.w-2))) + i
 	}
 }
 
@@ -80,14 +79,13 @@ func (mt *mersenneTwister) Rand() (int, error) {
 	}
 
 	y := mt.state[mt.index]
-	y = y ^ ((y >> mt.params.u) & mt.params.d)
-	y = y ^ ((y << mt.params.s) & mt.params.b)
-	y = y ^ ((y << mt.params.t) & mt.params.c)
-	y = y ^ (y >> mt.params.l)
-
+	y ^= (y >> mt.params.u) & mt.params.d
+	y ^= (y << mt.params.s) & mt.params.b
+	y ^= (y << mt.params.t) & mt.params.c
+	y ^= y >> mt.params.l
 	mt.index++
 
-	return y & (1<<mt.params.w - 1), nil
+	return y, nil
 }
 
 func New(params Params) MersenneTwister {
