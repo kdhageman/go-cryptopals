@@ -11,9 +11,7 @@ func TestSeed(t *testing.T) {
 		params: DefaultParams,
 		state:  make([]int, params.n),
 	}
-	if err := mt.Seed(0); err != nil {
-		t.Fatalf("Unexpected error: %s", err)
-	}
+	mt.Seed(0)
 
 	for i := 1; i < params.n; i++ {
 		if mt.state[i] == 0 {
@@ -22,10 +20,31 @@ func TestSeed(t *testing.T) {
 	}
 }
 
-func TestNew(t *testing.T) {
-	params := Params{
-		r: 3,
-		w: 5,
+func TestRand(t *testing.T) {
+	expected := []int{
+		-795755684,
+		581869302,
+		-404620562,
+		-708632711,
+		545404204,
+		-133711905,
+		-372047867,
+		949333985,
+		-1579004998,
+		1323567403,
 	}
-	New(params)
+
+	mt := New(DefaultParams)
+	if _, err := mt.Rand(); err == nil {
+		t.Fatalf("Expected an error, but got none")
+	}
+
+	mt.Seed(5489)
+
+	for i := range expected {
+		actual, _ := mt.Rand()
+		if expected[i] != actual {
+			t.Fatalf("Expected %d, but got %d", expected[i], actual)
+		}
+	}
 }
