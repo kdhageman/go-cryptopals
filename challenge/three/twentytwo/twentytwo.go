@@ -5,53 +5,46 @@ import (
 	"github.com/kdhageman/go-cryptopals/challenge"
 	"github.com/kdhageman/go-cryptopals/crypto/mersenne"
 	"github.com/logrusorgru/aurora"
+	"github.com/pkg/errors"
+	"math/rand"
+	"time"
 )
-
-func untemper(n int32) uint32 {
-	y := uint64(n) & 0xffffffff
-	y ^= y >> 18
-	y ^= (y << 15) & 0xefc60000
-	for i := 0; i < 7; i++ {
-		y ^= (y << 7) & 0x9d2c5680
-	}
-	for i := 0; i < 3; i++ {
-		y ^= y >> 11
-	}
-	return uint32(y)
-}
 
 type ch struct{}
 
-func (c *ch) Solve() error {
-	seed := 5489
+func rng() (int32, error) {
 	mt := mersenne.New()
-	mt.Seed(seed)
+	seed := time.Now().Unix() + 40 + rand.Int63n(60000)
+	fmt.Printf("Actual seed: %d\n", aurora.Cyan(seed))
+	mt.Seed(int(seed))
+	return mt.Rand()
+}
 
-	expected := make([]int32, 624)
-	state := make([]uint32, 624)
-	for i := 0; i < 624; i++ {
-		v, err := mt.Rand()
+func (c *ch) Solve() error {
+	target, err := rng()
+	if err != nil {
+		return err
+	}
+
+	found := false
+	mt := mersenne.New()
+	lower := time.Now().Unix() + 35
+	for i := 0; i < 80000; i++ {
+		seed := lower + int64(i)
+		mt.Seed(int(seed))
+		actual, err := mt.Rand()
 		if err != nil {
 			return err
 		}
-		expected[i] = v
-		state[i] = untemper(v)
+		if actual == target {
+			fmt.Printf("Found seed: %d\n", aurora.Cyan(seed))
+			found = true
+			break
+		}
 	}
 
-	other := mersenne.FromSlice(state)
-	actual := make([]int32, 624)
-	for i := 0; i < 624; i++ {
-		v, err := other.Rand()
-		if err != nil {
-			return err
-		}
-		actual[i] = v
-	}
-
-	for i := range expected {
-		if expected[i] != actual[i] {
-			fmt.Printf("Expected %11d, but got %11d\n", aurora.Cyan(expected[i]), aurora.Cyan(actual[i]))
-		}
+	if !found {
+		return errors.New("failed to find seed")
 	}
 
 	return nil
