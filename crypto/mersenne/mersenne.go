@@ -12,7 +12,7 @@ var (
 
 type MersenneTwister interface {
 	Rand() (int32, error)
-	Seed(seed uint32)
+	Seed(seed int)
 }
 
 type mersenneTwister struct {
@@ -33,9 +33,9 @@ func (mt *mersenneTwister) twist() {
 	mt.index = 0
 }
 
-func (mt *mersenneTwister) Seed(seed uint32) {
+func (mt *mersenneTwister) Seed(seed int) {
 	mt.index = n
-	mt.state[0] = seed
+	mt.state[0] = uint32(seed)
 	for i := 1; i < n; i++ {
 		mt.state[i] = uint32(1812433253*(uint64(mt.state[i-1])^(uint64(mt.state[i-1])>>30)) + uint64(i))
 	}
@@ -58,6 +58,14 @@ func (mt *mersenneTwister) Rand() (int32, error) {
 	mt.index++
 
 	return int32(y), nil
+}
+
+func FromSlice(state []uint32) MersenneTwister {
+	return &mersenneTwister{
+		state:  state,
+		index:  0,
+		seeded: true,
+	}
 }
 
 func New() MersenneTwister {
