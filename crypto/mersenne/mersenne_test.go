@@ -6,7 +6,7 @@ import (
 
 func TestSeed(t *testing.T) {
 	mt := mersenneTwister{
-		state: make([]int, n),
+		state: make([]uint32, n),
 	}
 	mt.Seed(0)
 
@@ -18,7 +18,7 @@ func TestSeed(t *testing.T) {
 }
 
 func TestRand(t *testing.T) {
-	expected := []int{
+	expected := []int32{
 		-795755684,
 		581869302,
 		-404620562,
