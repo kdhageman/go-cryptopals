@@ -11,8 +11,12 @@ func untemper(n int32) uint32 {
 	y := uint64(n) & 0xffffffff
 	y ^= y >> 18
 	y ^= (y << 15) & 0xefc60000
-	y ^= (y << 7) & 0x9d2c5680
-	y ^= y >> 11
+	for i := 0; i < 7; i++ {
+		y ^= (y << 7) & 0x9d2c5680
+	}
+	for i := 0; i < 3; i++ {
+		y ^= y >> 11
+	}
 	return uint32(y)
 }
 
