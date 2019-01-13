@@ -1,4 +1,4 @@
-package twenteone
+package twentyone
 
 import (
 	"github.com/kdhageman/go-cryptopals/challenge"
