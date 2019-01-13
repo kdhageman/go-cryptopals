@@ -5,15 +5,12 @@ import (
 )
 
 func TestSeed(t *testing.T) {
-	params := DefaultParams
-
 	mt := mersenneTwister{
-		params: DefaultParams,
-		state:  make([]int, params.n),
+		state: make([]int, n),
 	}
 	mt.Seed(0)
 
-	for i := 1; i < params.n; i++ {
+	for i := 1; i < n; i++ {
 		if mt.state[i] == 0 {
 			t.Fatalf("Unexpected state to be non-zero")
 		}
@@ -34,7 +31,7 @@ func TestRand(t *testing.T) {
 		1323567403,
 	}
 
-	mt := New(DefaultParams)
+	mt := New()
 	if _, err := mt.Rand(); err == nil {
 		t.Fatalf("Expected an error, but got none")
 	}
