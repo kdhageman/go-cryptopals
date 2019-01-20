@@ -2,6 +2,8 @@ package mersenne
 
 import (
 	"testing"
+	"bytes"
+	"github.com/logrusorgru/aurora"
 )
 
 func TestSeed(t *testing.T) {
@@ -43,5 +45,25 @@ func TestRand(t *testing.T) {
 		if expected[i] != actual {
 			t.Fatalf("Expected %d, but got %d", expected[i], actual)
 		}
+	}
+}
+
+func TestCipher(t *testing.T) {
+	key := bytes.Repeat([]byte{ 0x00}, 32)
+	c := NewCipher(key)
+
+	original := bytes.Repeat([]byte{0x00}, 32)
+
+	ct, err := c.Encrypt(original)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	actual, err := c.Encrypt(ct)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	if !bytes.Equal(original, actual) {
+		t.Fatalf("Expected decrypted plain text %q to equal original plain text %q", aurora.Cyan(actual), aurora.Cyan(original))
+
 	}
 }

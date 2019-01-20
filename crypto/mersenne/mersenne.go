@@ -1,6 +1,9 @@
 package mersenne
 
-import "errors"
+import (
+	"errors"
+	"encoding/binary"
+	)
 
 const (
 	n = 624
@@ -71,5 +74,65 @@ func FromSlice(state []uint32) MersenneTwister {
 func New() MersenneTwister {
 	return &mersenneTwister{
 		state: make([]uint32, n),
+	}
+}
+
+type Cipher interface {
+	Encrypt([]byte) ([]byte, error)
+	Decrypt([]byte) ([]byte, error)
+}
+
+type cipher struct {
+	key int
+	mt MersenneTwister
+	ks []byte
+}
+
+func intToBytes(a int32) []byte {
+	var res []byte
+	for i:=0; i<4; i++ {
+		res = append([]byte{byte(a % 256)}, res...)
+			a = a >> 8
+	}
+	return res
+}
+
+func (c *cipher) next() (byte, error) {
+	if len(c.ks) == 0 {
+		r, err := c.mt.Rand()
+		if err != nil {
+			return 0x00, err
+		}
+		c.ks = intToBytes(r)
+	}
+	r := c.ks[0]
+	c.ks = c.ks[1:]
+	return r, nil
+}
+
+func (c *cipher) Encrypt(pt []byte) ([]byte, error) {
+	c.mt.Seed(c.key)
+
+	var ct []byte
+	for _, ptByte := range pt {
+		b, err := c.next()
+		if err != nil {
+			return nil, err
+		}
+		ct = append(ct, ptByte ^ b)
+	}
+
+	return ct, nil
+}
+
+func (c *cipher) Decrypt(ct []byte) ([]byte, error) {
+	return c.Encrypt(ct)
+}
+
+func NewCipher(key []byte) Cipher {
+	keyInt := binary.LittleEndian.Uint32(key)
+	return &cipher{
+		key: int(keyInt),
+		mt: New(),
 	}
 }
